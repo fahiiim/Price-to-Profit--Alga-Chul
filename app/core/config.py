@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     max_logo_bytes: int = 2_000_000
     cors_origins: list[str] = ["*"]
     session_days: int = 30
+    otp_minutes: int = 10
 
 
 @lru_cache(maxsize=1)
