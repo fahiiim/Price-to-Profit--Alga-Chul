@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     media_dir: Path = PROJECT_ROOT / "media"
     max_logo_bytes: int = 2_000_000
     cors_origins: list[str] = ["*"]
+    session_days: int = 30
 
 
 @lru_cache(maxsize=1)
