@@ -4,12 +4,12 @@ from fastapi import APIRouter, Query
 
 from app.activity.schemas import ActivityRead
 from app.activity.service import list_activity
-from app.admin.schemas import AdminBusinessDetail, AdminOverview
+from app.admin.schemas import AdminBusinessDetail, AdminOverview, BusinessSnapshot
 from app.admin.service import get_business_detail, get_overview
 from app.business.dependencies import CurrentBusiness
 from app.business.models import BusinessProfile
 from app.business.schemas import BusinessRead
-from app.business.service import apply_platform_defaults
+from app.business.service import apply_platform_defaults, list_businesses
 from app.core.dependencies import PaginationDep, SessionDep
 from app.core.schemas import Page, error_responses
 from app.platform.models import PlatformSettings
@@ -58,6 +58,39 @@ def get_admin_business(
     business: CurrentBusiness, session: SessionDep
 ) -> AdminBusinessDetail:
     return get_business_detail(session, business)
+
+
+@router.get(
+    "/businesses",
+    response_model=Page[BusinessSnapshot],
+    summary="List businesses",
+    description=(
+        "Every studio that has completed first-launch setup, newest first. "
+        "Does not require `X-Business-Id`. Login will restrict this later."
+    ),
+    response_description="A page of businesses.",
+)
+def list_admin_businesses(
+    session: SessionDep, pagination: PaginationDep
+) -> Page[BusinessSnapshot]:
+    businesses, total = list_businesses(
+        session, limit=pagination.limit, offset=pagination.offset
+    )
+    return Page[BusinessSnapshot](
+        items=[
+            BusinessSnapshot(
+                id=row.id,
+                business_name=row.business_name,
+                currency=row.currency,
+                has_logo=row.logo_path is not None,
+                created_at=row.created_at,
+            )
+            for row in businesses
+        ],
+        total=total,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
 
 
 @router.get(
@@ -145,6 +178,7 @@ def update_platform_app_settings(
     response_description="A page of activity entries.",
 )
 def list_admin_activity(
+    business: CurrentBusiness,
     session: SessionDep,
     pagination: PaginationDep,
     entity_type: Annotated[
@@ -160,6 +194,7 @@ def list_admin_activity(
 ) -> Page[ActivityRead]:
     entries, total = list_activity(
         session,
+        business_id=business.id,
         entity_type=entity_type,
         limit=pagination.limit,
         offset=pagination.offset,
