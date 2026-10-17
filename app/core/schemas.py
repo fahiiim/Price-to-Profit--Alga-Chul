@@ -78,6 +78,7 @@ class Page[ItemT](BaseModel):
 
 
 _ERROR_DESCRIPTIONS: dict[int, str] = {
+    401: "Sign in with a Bearer token from register or login.",
     404: "The resource does not exist.",
     409: "The request conflicts with the resource's current state.",
     413: "The uploaded file is too large.",
