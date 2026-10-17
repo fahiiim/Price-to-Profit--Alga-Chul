@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.activity.enums import ActivityAction
 from app.activity.service import record_activity
+from app.auth.models import User
 from app.business.models import BusinessProfile
 from app.business.schemas import REQUIRED_FIELDS, BusinessCreate, BusinessUpdate
 from app.core.errors import (
@@ -25,12 +26,14 @@ LOGO_FOLDER = "logos"
 LOGO_EXTENSIONS = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
 
 
-def create_business(session: Session, payload: BusinessCreate) -> BusinessProfile:
+def create_business(
+    session: Session, user: User, payload: BusinessCreate
+) -> BusinessProfile:
     """Create a business from first-launch setup.
 
     Omitted pricing fields are copied from the platform quote defaults.
     """
-    business = BusinessProfile()
+    business = BusinessProfile(user_id=user.id, owner_name=user.name)
     copy_quote_defaults(get_platform_settings(session), business)
     for name, value in payload.model_dump(exclude_unset=True).items():
         setattr(business, name, value)
@@ -57,10 +60,53 @@ def get_business(session: Session, business_id: int) -> BusinessProfile:
     return business
 
 
+def get_owned_business(
+    session: Session, user: User, business_id: int
+) -> BusinessProfile:
+    business = get_business(session, business_id)
+    if business.user_id != user.id:
+        raise NotFoundError(f"Business {business_id} was not found.")
+    return business
+
+
+def resolve_business(
+    session: Session, user: User, business_id: int | None
+) -> BusinessProfile:
+    """The studio this request is about.
+
+    `business_id` comes from `X-Business-Id`. If omitted and the user has
+    exactly one studio, that studio is used.
+    """
+    if business_id is not None:
+        return get_owned_business(session, user, business_id)
+
+    rows = list(
+        session.scalars(
+            select(BusinessProfile)
+            .where(BusinessProfile.user_id == user.id)
+            .order_by(BusinessProfile.id)
+            .limit(2)
+        )
+    )
+    if len(rows) == 1:
+        return rows[0]
+    if not rows:
+        raise NotFoundError("Create a business profile first.")
+    raise BusinessRuleError(
+        "Send `X-Business-Id`; this account has more than one business."
+    )
+
+
 def list_businesses(
-    session: Session, *, limit: int = 20, offset: int = 0
+    session: Session,
+    *,
+    user_id: int | None = None,
+    limit: int = 20,
+    offset: int = 0,
 ) -> tuple[list[BusinessProfile], int]:
     statement = select(BusinessProfile)
+    if user_id is not None:
+        statement = statement.where(BusinessProfile.user_id == user_id)
     total = session.scalar(select(func.count()).select_from(statement.subquery()))
     rows = session.scalars(
         statement.order_by(BusinessProfile.created_at.desc(), BusinessProfile.id.desc())
