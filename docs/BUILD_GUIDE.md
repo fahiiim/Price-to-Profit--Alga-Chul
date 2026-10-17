@@ -50,7 +50,7 @@ Made before writing code, from the product design:
 | Database | SQLite via SQLAlchemy 2 (sync) + Alembic | Zero setup now; switching to Postgres later is a URL change plus a migration |
 | Money | `Decimal` end to end, stored as scaled integers | Exact totals and exact SQL sums; floats are never used |
 | PDFs | ReportLab | Pure Python, no system dependencies |
-| Auth | None in this version | Out of scope; a single business (`id = 1`) is served |
+| Auth | None in this version | Out of scope for now; many businesses, identified by `X-Business-Id` |
 | Structure | Feature folders (`router`/`schemas`/`service`/`models`) | Follows the reference architecture repository; a feature can be read in one folder |
 | Style | PEP 8 enforced by Ruff, Python 3.12 idioms | One consistent codebase |
 
@@ -243,8 +243,8 @@ them.
    - `BusinessUpdate` is the PATCH body.
 3. `service.py`
    - Profile:
-     - `ensure_business` creates business 1 from the platform defaults.
-     - `get_business` loads it.
+     - `create_business` creates a studio from first-launch setup.
+     - `get_business` loads one by id.
      - `update_business` applies a PATCH, rejects `null` for required
        fields and validates the deposit.
      - `apply_platform_defaults` copies the platform defaults onto it.
@@ -258,13 +258,14 @@ them.
        transaction.
 4. **`dependencies.py`**
    - `CurrentBusiness` answers "which business is this request for?"
-   - It returns business 1 today. Every later router depends on it, and
+   - It reads `X-Business-Id`. Every later router depends on it, and
      every later service filters by `business.id`.
    - Adding authentication later only changes this one function.
 5. **`app/bootstrap.py`** — `seed_required_rows` seeds the platform row, then
    the business, and is called from the lifespan in `factory.py`. It lives
    above both features so `platform` never imports `business`.
-6. `router.py` — `GET/PATCH /v1/business`, `PUT/GET/DELETE /v1/business/logo`.
+6. `router.py` — `POST /v1/businesses`, `GET/PATCH /v1/business`,
+   `PUT/GET/DELETE /v1/business/logo`.
 7. `app/api.py` — the `/v1` router; each feature's router is added here as
    it is built.
 
@@ -274,7 +275,8 @@ them.
 - PDFs use the logo and contact details.
 - Quote lines fall back to the business defaults.
 
-**Check:** `PATCH /v1/business` → `GET /v1/business`; upload a logo.
+**Check:** `POST /v1/businesses` → `PATCH /v1/business` with `X-Business-Id`;
+upload a logo.
 
 ---
 
@@ -558,8 +560,8 @@ The data model is already ready for it:
    `get_current_business` to resolve the business from the token or device
    instead of `get_business(session)`.
 2. Protect `/v1/admin/*` with an admin dependency on the admin router.
-3. Remove `BUSINESS_ID = 1` seeding from `bootstrap.py` and create businesses
-   on sign-up with `copy_quote_defaults`.
+3. Create the business on sign-up with the existing `POST /v1/businesses`
+   path (`copy_quote_defaults` is already used there).
 
 No service, schema or table needs to change: every query is already scoped
 by `business.id`.
