@@ -13,11 +13,11 @@ invoice, tracks payment and renders branded PDFs.
 | PDFs | ReportLab |
 | Quality | Ruff (PEP 8 + import order + modern Python), pytest |
 
-Registration is **email and name only** (no password yet). The app then
-creates a studio with `POST /v1/businesses`. Later requests send
-`Authorization: Bearer <token>`. `X-Business-Id` is only needed when one
-account owns more than one studio (see [Scope](#scope)). Subscriptions are
-out of scope.
+Register with **email, name and password**, verify the **OTP**, then
+**log in** to get a Bearer token. The app then creates a studio with
+`POST /v1/businesses`. `X-Business-Id` is only needed when one account
+owns more than one studio (see [Scope](#scope)). Subscriptions are out of
+scope.
 
 More documentation:
 
@@ -95,7 +95,7 @@ description, request examples and its documented error responses in `/docs`.
 |---|---|---|
 | Health | `GET /health/live`, `GET /health/ready` | Process and database checks |
 | App config | `GET /v1/app-config` | Support contacts, legal links, version gate, maintenance mode |
-| Auth | `POST /v1/auth/register`, `POST /v1/auth/login`, `GET /v1/auth/me`, `POST /v1/auth/logout` | Email + name registration, session token, sign out |
+| Auth | `POST /v1/auth/register`, `/verify-otp`, `/resend-otp`, `/login`, `GET /v1/auth/me`, `POST /v1/auth/logout` | Register, OTP, login (token), sign out |
 | Business | `POST /v1/businesses`, `GET/PATCH /v1/business`, `PUT/GET/DELETE /v1/business/logo` | First-launch setup, then branding, contact, logo, payment link and pricing defaults |
 | Library | `GET/POST /v1/library`, `GET/PATCH/DELETE /v1/library/{id}` | Saved hair products, services, materials and fees |
 | Quotes | `POST /v1/quotes/preview`, `GET/POST /v1/quotes`, `GET/PATCH/DELETE /v1/quotes/{id}`, `PATCH /v1/quotes/{id}/status`, `POST /v1/quotes/{id}/duplicate` | Live pricing, CRUD, status workflow, search |
@@ -111,9 +111,9 @@ description, request examples and its documented error responses in `/docs`.
   decimal places. Floats are never used for money.
 - **Lists** are paginated with `limit` (1–100, default 20) and `offset`, and
   return `{"items": [...], "total": n, "limit": l, "offset": o}`.
-- **Auth**: `POST /v1/auth/register` with `{email, name}`. Send
-  `Authorization: Bearer <access_token>` afterwards. Login uses the same
-  email (no password in this version).
+- **Auth**: `POST /v1/auth/register` with `{email, name, password}` →
+  `POST /v1/auth/verify-otp` → `POST /v1/auth/login`. The token is issued
+  **only on login**. Send `Authorization: Bearer <access_token>` afterwards.
 - **Which business**: `POST /v1/businesses` after sign-up. Send
   **`X-Business-Id`** only when the account has more than one studio.
 - **Creates** return `201 Created` with a `Location` header; **deletes** return
@@ -205,7 +205,7 @@ app/
 ├── api.py             mounts every feature router under /v1
 ├── bootstrap.py       seeds the rows the app needs on start-up
 ├── health.py          /health/live and /health/ready
-├── auth/              register (email + name), login, sessions, Bearer token
+├── auth/              register, OTP, password login, sessions, Bearer token
 ├── core/              config, clock, errors, error handlers, shared schemas,
 │                      dependencies, OpenAPI text
 ├── db/                declarative base, session factory, exact column types
@@ -235,7 +235,7 @@ a feature has them.
 
 Not included in this version, by design:
 
-- Passwords, magic links and subscriptions. Registration is email + name;
-  `CurrentUser` reads the Bearer token and `CurrentBusiness` picks that
-  user's studio.
+- Email delivery of OTPs (in `local` the code is returned in the register
+  response) and subscriptions. `CurrentUser` reads the Bearer token from
+  login; `CurrentBusiness` picks that user's studio.
 - Sending quotes or invoices by email/WhatsApp; the app shares the PDFs.
