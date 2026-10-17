@@ -6,6 +6,7 @@ from app.activity.schemas import ActivityRead
 from app.activity.service import list_activity
 from app.admin.schemas import AdminBusinessDetail, AdminOverview, BusinessSnapshot
 from app.admin.service import get_business_detail, get_overview
+from app.auth.dependencies import CurrentUser
 from app.business.dependencies import CurrentBusiness
 from app.business.models import BusinessProfile
 from app.business.schemas import BusinessRead
@@ -28,7 +29,7 @@ from app.platform.service import (
 router = APIRouter(
     prefix="/admin",
     tags=["Admin"],
-    responses=error_responses(422),
+    responses=error_responses(401, 422),
 )
 
 
@@ -65,16 +66,16 @@ def get_admin_business(
     response_model=Page[BusinessSnapshot],
     summary="List businesses",
     description=(
-        "Every studio that has completed first-launch setup, newest first. "
-        "Does not require `X-Business-Id`. Login will restrict this later."
+        "Studios owned by the signed-in account, newest first. "
+        "Does not require `X-Business-Id`."
     ),
     response_description="A page of businesses.",
 )
 def list_admin_businesses(
-    session: SessionDep, pagination: PaginationDep
+    user: CurrentUser, session: SessionDep, pagination: PaginationDep
 ) -> Page[BusinessSnapshot]:
     businesses, total = list_businesses(
-        session, limit=pagination.limit, offset=pagination.offset
+        session, user_id=user.id, limit=pagination.limit, offset=pagination.offset
     )
     return Page[BusinessSnapshot](
         items=[
@@ -103,7 +104,7 @@ def list_admin_businesses(
     ),
     response_description="Platform quote defaults.",
 )
-def get_quote_defaults(session: SessionDep) -> PlatformSettings:
+def get_quote_defaults(session: SessionDep, _: CurrentUser) -> PlatformSettings:
     return get_platform_settings(session)
 
 
@@ -118,7 +119,7 @@ def get_quote_defaults(session: SessionDep) -> PlatformSettings:
     response_description="The saved defaults.",
 )
 def replace_platform_quote_defaults(
-    payload: QuoteDefaults, session: SessionDep
+    payload: QuoteDefaults, session: SessionDep, _: CurrentUser
 ) -> PlatformSettings:
     return replace_quote_defaults(session, get_platform_settings(session), payload)
 
@@ -150,7 +151,7 @@ def apply_defaults_to_business(
     ),
     response_description="App settings.",
 )
-def get_platform_app_settings(session: SessionDep) -> PlatformSettings:
+def get_platform_app_settings(session: SessionDep, _: CurrentUser) -> PlatformSettings:
     return get_platform_settings(session)
 
 
@@ -162,7 +163,7 @@ def get_platform_app_settings(session: SessionDep) -> PlatformSettings:
     response_description="The updated app settings.",
 )
 def update_platform_app_settings(
-    payload: AppSettingsUpdate, session: SessionDep
+    payload: AppSettingsUpdate, session: SessionDep, _: CurrentUser
 ) -> PlatformSettings:
     return update_app_settings(session, get_platform_settings(session), payload)
 
