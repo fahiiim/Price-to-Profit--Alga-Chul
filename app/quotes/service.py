@@ -148,6 +148,7 @@ def create_quote(
         entity_type=ENTITY_TYPE,
         entity_id=quote.id,
         summary=f"Quote {quote.number} created for {quote.client_name}",
+        business_id=quote.business_id,
     )
     session.commit()
     return quote
@@ -185,6 +186,7 @@ def update_quote(
         entity_type=ENTITY_TYPE,
         entity_id=quote.id,
         summary=f"Quote {quote.number} updated",
+        business_id=quote.business_id,
     )
     session.commit()
     return quote
@@ -211,6 +213,7 @@ def change_quote_status(session: Session, quote: Quote, target: QuoteStatus) -> 
         entity_type=ENTITY_TYPE,
         entity_id=quote.id,
         summary=f"Quote {quote.number} moved from {previous} to {target}",
+        business_id=quote.business_id,
     )
     session.commit()
     return quote
@@ -247,6 +250,7 @@ def duplicate_quote(
         entity_type=ENTITY_TYPE,
         entity_id=copy.id,
         summary=f"Quote {copy.number} duplicated from {source.number}",
+        business_id=copy.business_id,
     )
     session.commit()
     return copy
@@ -263,6 +267,7 @@ def delete_quote(session: Session, quote: Quote) -> None:
         entity_type=ENTITY_TYPE,
         entity_id=quote.id,
         summary=f"Quote {quote.number} for {quote.client_name} deleted",
+        business_id=quote.business_id,
     )
     session.delete(quote)
     session.commit()
