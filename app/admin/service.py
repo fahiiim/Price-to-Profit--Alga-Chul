@@ -21,7 +21,9 @@ RECENT_ACTIVITY_LIMIT = 10
 
 def get_overview(session: Session, business: BusinessProfile) -> AdminOverview:
     end = today()
-    activity, _ = list_activity(session, limit=RECENT_ACTIVITY_LIMIT)
+    activity, _ = list_activity(
+        session, business_id=business.id, limit=RECENT_ACTIVITY_LIMIT
+    )
     return AdminOverview(
         business=BusinessSnapshot(
             id=business.id,
