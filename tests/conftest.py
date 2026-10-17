@@ -29,7 +29,13 @@ def app(tmp_path: Path) -> FastAPI:
 
 @pytest.fixture
 def client(app: FastAPI) -> Iterator[TestClient]:
+    """Signed-in-as-a-studio: creates a business and sends `X-Business-Id`."""
     with TestClient(app) as test_client:
+        created = test_client.post(
+            "/v1/businesses", json={"business_name": "Amna Hair Studio"}
+        )
+        assert created.status_code == 201, created.text
+        test_client.headers["X-Business-Id"] = str(created.json()["id"])
         yield test_client
 
 
