@@ -75,6 +75,7 @@ def create_invoice(
         entity_type=ENTITY_TYPE,
         entity_id=invoice.id,
         summary=f"Invoice {invoice.number} created from quote {quote.number}",
+        business_id=invoice.business_id,
     )
     session.commit()
     return invoice
@@ -144,6 +145,7 @@ def change_invoice_status(
         entity_type=ENTITY_TYPE,
         entity_id=invoice.id,
         summary=f"Invoice {invoice.number} moved from {previous} to {target}",
+        business_id=invoice.business_id,
     )
     session.commit()
     return invoice
@@ -161,6 +163,7 @@ def delete_invoice(session: Session, invoice: Invoice) -> None:
             f"Invoice {invoice.number} deleted; quote {invoice.quote.number} "
             "is editable again"
         ),
+        business_id=invoice.business_id,
     )
     session.delete(invoice)
     session.commit()
