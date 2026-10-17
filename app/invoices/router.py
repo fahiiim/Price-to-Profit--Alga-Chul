@@ -21,7 +21,7 @@ from app.invoices.service import (
 )
 from app.quotes.service import get_quote
 
-router = APIRouter(tags=["Invoices"], responses=error_responses(422))
+router = APIRouter(tags=["Invoices"], responses=error_responses(401, 422))
 
 
 @router.post(
