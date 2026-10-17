@@ -46,6 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "displayRequestDuration": True,
             "filter": True,
             "tryItOutEnabled": True,
+            "persistAuthorization": True,
         },
     )
     app.state.settings = settings
