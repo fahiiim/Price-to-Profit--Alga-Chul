@@ -14,8 +14,8 @@ invoice, tracks payment and renders branded PDFs.
 | Quality | Ruff (PEP 8 + import order + modern Python), pytest |
 
 There is **no login, registration or subscription** in this version. The API
-serves a single business profile; every table already carries `business_id`
-so per-account access can be added later without reshaping the data
+is still multi-tenant: `POST /v1/businesses` creates a studio, and every later
+request names it with `X-Business-Id`. Login will replace that header
 (see [Scope](#scope)).
 
 More documentation:
@@ -94,13 +94,13 @@ description, request examples and its documented error responses in `/docs`.
 |---|---|---|
 | Health | `GET /health/live`, `GET /health/ready` | Process and database checks |
 | App config | `GET /v1/app-config` | Support contacts, legal links, version gate, maintenance mode |
-| Business | `GET/PATCH /v1/business`, `PUT/GET/DELETE /v1/business/logo` | Branding, contact details, tax, rates, deposit and numbering defaults |
+| Business | `POST /v1/businesses`, `GET/PATCH /v1/business`, `PUT/GET/DELETE /v1/business/logo` | First-launch setup, then branding, contact, logo, payment link and pricing defaults |
 | Library | `GET/POST /v1/library`, `GET/PATCH/DELETE /v1/library/{id}` | Saved hair products, services, materials and fees |
 | Quotes | `POST /v1/quotes/preview`, `GET/POST /v1/quotes`, `GET/PATCH/DELETE /v1/quotes/{id}`, `PATCH /v1/quotes/{id}/status`, `POST /v1/quotes/{id}/duplicate` | Live pricing, CRUD, status workflow, search |
 | Invoices | `POST /v1/quotes/{id}/invoice`, `GET /v1/invoices`, `GET/DELETE /v1/invoices/{id}`, `PATCH /v1/invoices/{id}/status` | Invoice a quote, record payments |
 | Documents | `GET /v1/quotes/{id}/pdf`, `GET /v1/quotes/{id}/cost-sheet/pdf`, `GET /v1/invoices/{id}/pdf` | Branded PDFs (`?download=true` to force a download) |
 | Dashboard | `GET /v1/dashboard` | Period figures, money outstanding, status counts, recent quotes |
-| Admin | `/v1/admin/overview`, `/business`, `/defaults`, `/defaults/apply`, `/settings`, `/activity` | Owner dashboard: platform defaults, app settings, activity log |
+| Admin | `/v1/admin/overview`, `/business`, `/businesses`, `/defaults`, `/defaults/apply`, `/settings`, `/activity` | Owner dashboard: studios, platform defaults, app settings, activity log |
 
 ### Conventions
 
@@ -109,6 +109,9 @@ description, request examples and its documented error responses in `/docs`.
   decimal places. Floats are never used for money.
 - **Lists** are paginated with `limit` (1–100, default 20) and `offset`, and
   return `{"items": [...], "total": n, "limit": l, "offset": o}`.
+- **Which business**: `POST /v1/businesses` on first launch. Store the `id`
+  and send **`X-Business-Id`** on every later request. Login will replace
+  this header later.
 - **Creates** return `201 Created` with a `Location` header; **deletes** return
   `204 No Content`.
 - **Errors** always use one envelope:
@@ -226,9 +229,7 @@ a feature has them.
 
 Not included in this version, by design:
 
-- Authentication, registration, subscriptions and billing.
-- Multiple businesses. `CurrentBusiness` (`app/business/dependencies.py`) is
-  the single place that decides which business a request belongs to; it
-  always returns business `1` today and is where a token or device lookup
-  would go later.
+- Authentication, registration, subscriptions and billing. Many businesses
+  can already exist; `CurrentBusiness` reads `X-Business-Id` and is the
+  only place login will later look up the account's studio.
 - Sending quotes or invoices by email/WhatsApp; the app shares the PDFs.
