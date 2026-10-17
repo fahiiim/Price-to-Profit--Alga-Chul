@@ -117,7 +117,7 @@ Example: `POST /v1/quotes` with the worked example body.
    - `SessionDep` → `get_session` opens a SQLAlchemy `Session` from
      `request.app.state.session_factory` and closes it after the response.
    - `CurrentBusiness` → `get_current_business` → `business.service.get_business`
-     loads business row `1`.
+     loads the row named by the `X-Business-Id` header.
 4. **Validation**: FastAPI validates the JSON into `QuoteCreate`
    (`quotes/schemas.py`). Money fields use `core.schemas.Money`, which parses
    decimals and rounds them half-up to 2 dp. A failure raises
@@ -173,9 +173,8 @@ Used by: `app/main.py`, `tests/conftest.py`, and the scripts you write.
 
 ### `app/bootstrap.py`
 **`seed_required_rows(session)`** — calls
-`platform.service.ensure_platform_settings`, then
-`business.service.ensure_business(session, defaults)` so a fresh business is
-created from the platform defaults, then commits. Idempotent. Used by the
+`platform.service.ensure_platform_settings` and commits. Businesses are
+created through `POST /v1/businesses`, not seeded. Idempotent. Used by the
 lifespan in `factory.py`.
 
 ### `app/health.py`
@@ -428,7 +427,7 @@ rows share exactly the same default fields.
 |---|---|---|
 | `ensure_platform_settings(session)` | Get or create row 1 | `bootstrap.py` |
 | `get_platform_settings(session)` | Get row 1 or `NotFoundError` | platform and admin routers, business service |
-| `copy_quote_defaults(source, target)` | Copies every default field | `business.service.ensure_business` / `apply_platform_defaults`, `replace_quote_defaults` |
+| `copy_quote_defaults(source, target)` | Copies every default field | `business.service.create_business` / `apply_platform_defaults`, `replace_quote_defaults` |
 | `replace_quote_defaults(session, settings, payload)` | PUT semantics for defaults; logs `platform.defaults_updated` | `admin/router.py` |
 | `update_app_settings(session, settings, payload)` | PATCH app settings; logs `platform.app_settings_updated` | `admin/router.py` |
 
@@ -460,8 +459,9 @@ default fields from the mixin.
 ### `business/service.py`
 | Function | What it does | Called by |
 |---|---|---|
-| `ensure_business(session, defaults)` | Get or create business `BUSINESS_ID = 1`, copying platform defaults | `bootstrap.py` |
-| `get_business(session)` | Load business 1 | `business/dependencies.py` |
+| `create_business(session, payload)` | New studio from first-launch setup; copies platform defaults onto omitted fields | `business/router.py` |
+| `get_business(session, business_id)` | Load that studio or `NotFoundError` | `business/dependencies.py` |
+| `list_businesses(session, *, limit, offset)` | Newest first | `admin/router.py` |
 | `update_business(session, business, payload)` | Apply PATCH fields, reject `null` for required fields, `_ensure_valid_deposit`, log `business.updated` | `business/router.py` |
 | `apply_platform_defaults(session, business, settings)` | Copy platform defaults onto the business, log `platform.defaults_applied` | `admin/router.py` |
 | `save_logo(session, business, *, content_type, data, media_dir, max_bytes)` | `_validate_logo` (size → 413, type + magic bytes → 415), writes `<media_dir>/logos/logo-<uuid>.<ext>`, deletes the old file, logs | `business/router.py` |
@@ -472,16 +472,18 @@ default fields from the mixin.
 | `_has_image_signature`, `_delete_media_file` | Helpers | internal |
 
 ### `business/dependencies.py`
-- **`get_current_business(session)`** → `get_business(session)`.
+- **`get_current_business(session, x_business_id)`** →
+  `get_business(session, x_business_id)` using header `X-Business-Id`.
 - **`CurrentBusiness`** — `Annotated[BusinessProfile, Depends(...)]`.
 
 Every feature router declares `business: CurrentBusiness` and passes it to its
-service, and every service query filters on `business.id`. Supporting several
-businesses later only means changing this one function.
+service, and every service query filters on `business.id`. Login later only
+changes this one function.
 
 ### `business/router.py`
 | Endpoint | Function | Service call |
 |---|---|---|
+| `POST /v1/businesses` | `create_business_profile` | `create_business` |
 | `GET /v1/business` | `get_business_profile` | — (dependency already loaded it) |
 | `PATCH /v1/business` | `update_business_profile` | `update_business` |
 | `PUT /v1/business/logo` | `upload_logo` (multipart `file`) | `save_logo` |
@@ -819,9 +821,7 @@ quotes never change (they hold snapshots).
 | `migrations/env.py` | `DATABASE_URL` from `core.config.get_settings()` (so `PTP_DATABASE_URL` works); `target_metadata = app.db.registry.Base.metadata`; `render_as_batch=True` (SQLite `ALTER` support); `render_item` writes `ScaledDecimal` as `sa.Integer` and `UTCDateTime` as `sa.DateTime` so migrations do not import app types; `run_migrations_offline` / `run_migrations_online` |
 | `migrations/script.py.mako` | Template for new revisions |
 | `migrations/versions/20261015_0001_initial_schema.py` | Revision `0001`: all seven tables, indexes and constraints |
-
-`alembic check` reports no differences between the models and revision
-`0001`.
+| `migrations/versions/20261017_0002_multi_business.py` | Revision `0002`: `tagline`, activity `business_id`, quote/invoice numbers unique per business |
 
 ---
 
@@ -829,7 +829,7 @@ quotes never change (they hold snapshots).
 
 | File | Covers |
 |---|---|
-| `tests/conftest.py` | `app` (in-memory SQLite, temp media folder, small logo limit, `create_all`), `client` (`TestClient`, runs the lifespan so rows are seeded), `quote_payload` (deep copy of `WORKED_EXAMPLE`), `created_quote` |
+| `tests/conftest.py` | `app` (in-memory SQLite, temp media folder, small logo limit, `create_all`), `client` (`TestClient` that creates a business and sends `X-Business-Id`), `quote_payload` (deep copy of `WORKED_EXAMPLE`), `created_quote` |
 | `tests/unit/test_pricing.py` | Every pricing function: packs and leftovers, per-gram mode, markup, labour, items, tax on taxable lines only, deposits and caps, rounding, worked example, error cases |
 | `tests/unit/test_policies.py` | Quote transition table, editability, invoiceability; `amount_paid_for` |
 | `tests/api/test_business_and_config.py` | Health, app config, business PATCH, numbering, logo upload/download/delete incl. 413/415 |
@@ -850,8 +850,8 @@ uvicorn → app.main.app = create_app()
   → lifespan: media_dir.mkdir
             → bootstrap.seed_required_rows
                 → platform.ensure_platform_settings   (row 1, defaults + app config)
-                → business.ensure_business            (row 1, copies quote defaults)
                 → commit
+            (businesses are created by POST /v1/businesses)
 ```
 
 ### 19.2 Live pricing while the stylist types
