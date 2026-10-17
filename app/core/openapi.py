@@ -14,11 +14,13 @@ also shows the stylist what they really earn: cost, profit and profit per hour.
 ## How to read this API
 
 * **Base path**: every business endpoint lives under `/v1`.
-* **Which business**: this is a multi-tenant API. `POST /v1/businesses`
-  creates a studio (first-launch setup). Store the returned `id` and send
-  it as **`X-Business-Id`** on every later request (quotes, invoices,
-  library, dashboard, profile, logo). Login is not in this version; the
-  header is the stand-in for the account.
+* **Auth**: `POST /v1/auth/register` with **email** and **name** (no
+  password yet). Send `Authorization: Bearer <access_token>` on every
+  later request. `POST /v1/auth/login` with the same email issues a new
+  token. Public: health, `GET /v1/app-config`, register and login.
+* **Which business**: `POST /v1/businesses` creates a studio for the
+  signed-in account. `X-Business-Id` is only required when that account
+  owns more than one studio.
 * **Money** is exact. Send amounts as strings or numbers with up to two
   decimals (`"350.00"` or `350`). Amounts in responses are **strings** such as
   `"2104.00"` so no precision is lost.
@@ -37,14 +39,15 @@ also shows the stylist what they really earn: cost, profit and profit per hour.
 | `validation_error` | 422 | The body or query is malformed (see `details`). |
 | `business_rule_violation` | 422 | Valid input that breaks a rule. |
 | `pricing_error` | 422 | A value the pricing engine cannot work with. |
+| `unauthorized` | 401 | Missing or invalid Bearer token. |
 | `not_found` | 404 | The record does not exist. |
 | `conflict` | 409 | Not allowed in the record's current state. |
 | `file_too_large` / `unsupported_file_type` | 413 / 415 | Logo upload problems. |
 
 ## Typical flow
 
-1. `POST /v1/businesses` on first launch (identity, contact, quote defaults),
-   then `PUT /v1/business/logo`. Send `X-Business-Id` after that.
+1. `POST /v1/auth/register` (email + name), then `POST /v1/businesses` on
+   first launch, then `PUT /v1/business/logo`.
 2. `POST /v1/library` to save hair products, services and materials.
 3. `POST /v1/quotes/preview` while the stylist edits, for live totals.
 4. `POST /v1/quotes` to save, `PATCH /v1/quotes/{id}/status` as it progresses.
@@ -54,9 +57,8 @@ also shows the stylist what they really earn: cost, profit and profit per hour.
 
 ## Scope
 
-There is **no login, registration or subscription** handling in this version.
-Many businesses can exist; the app identifies itself with `X-Business-Id`.
-Admin endpoints are not protected yet.
+There is **no password or subscription** handling in this version.
+Registration is email and name; sessions are Bearer tokens.
 """
 
 OPENAPI_TAGS = [
@@ -67,6 +69,13 @@ OPENAPI_TAGS = [
     {
         "name": "App config",
         "description": "Public configuration the mobile app reads on launch.",
+    },
+    {
+        "name": "Auth",
+        "description": (
+            "Register with email and name, sign in, read the account, sign out. "
+            "No password in this version."
+        ),
     },
     {
         "name": "Business",
@@ -112,7 +121,7 @@ OPENAPI_TAGS = [
         "description": (
             "The owner's web dashboard: overview, business usage, platform "
             "quote defaults, app settings and the activity log. "
-            "**Not protected yet.**"
+            "Requires a signed-in user."
         ),
     },
 ]
