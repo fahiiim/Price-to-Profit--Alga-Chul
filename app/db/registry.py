@@ -4,6 +4,7 @@ Alembic and the test suite import this module before reading the metadata.
 """
 
 from app.activity.models import ActivityLog
+from app.auth.models import AuthSession, User
 from app.business.models import BusinessProfile
 from app.db.base import Base
 from app.invoices.models import Invoice
@@ -13,6 +14,7 @@ from app.quotes.models import Quote, QuoteLine
 
 __all__ = [
     "ActivityLog",
+    "AuthSession",
     "Base",
     "BusinessProfile",
     "Invoice",
@@ -20,4 +22,5 @@ __all__ = [
     "PlatformSettings",
     "Quote",
     "QuoteLine",
+    "User",
 ]
