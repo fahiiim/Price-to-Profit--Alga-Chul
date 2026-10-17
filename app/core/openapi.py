@@ -14,6 +14,11 @@ also shows the stylist what they really earn: cost, profit and profit per hour.
 ## How to read this API
 
 * **Base path**: every business endpoint lives under `/v1`.
+* **Which business**: this is a multi-tenant API. `POST /v1/businesses`
+  creates a studio (first-launch setup). Store the returned `id` and send
+  it as **`X-Business-Id`** on every later request (quotes, invoices,
+  library, dashboard, profile, logo). Login is not in this version; the
+  header is the stand-in for the account.
 * **Money** is exact. Send amounts as strings or numbers with up to two
   decimals (`"350.00"` or `350`). Amounts in responses are **strings** such as
   `"2104.00"` so no precision is lost.
@@ -38,7 +43,8 @@ also shows the stylist what they really earn: cost, profit and profit per hour.
 
 ## Typical flow
 
-1. `GET /v1/business` and `PATCH /v1/business` to set up branding and defaults.
+1. `POST /v1/businesses` on first launch (identity, contact, quote defaults),
+   then `PUT /v1/business/logo`. Send `X-Business-Id` after that.
 2. `POST /v1/library` to save hair products, services and materials.
 3. `POST /v1/quotes/preview` while the stylist edits, for live totals.
 4. `POST /v1/quotes` to save, `PATCH /v1/quotes/{id}/status` as it progresses.
@@ -49,7 +55,8 @@ also shows the stylist what they really earn: cost, profit and profit per hour.
 ## Scope
 
 There is **no login, registration or subscription** handling in this version.
-The API serves a single business, and the admin endpoints are not protected.
+Many businesses can exist; the app identifies itself with `X-Business-Id`.
+Admin endpoints are not protected yet.
 """
 
 OPENAPI_TAGS = [
@@ -64,8 +71,10 @@ OPENAPI_TAGS = [
     {
         "name": "Business",
         "description": (
-            "The stylist's business profile: name, contact details, logo, "
-            "payment link, document numbering and pricing defaults."
+            "Create a studio on first launch (`POST /v1/businesses`), then "
+            "read and update the current profile (`X-Business-Id`): name, "
+            "tagline, contact details, logo, payment link, numbering and "
+            "pricing defaults."
         ),
     },
     {
