@@ -50,7 +50,7 @@ Made before writing code, from the product design:
 | Database | SQLite via SQLAlchemy 2 (sync) + Alembic | Zero setup now; switching to Postgres later is a URL change plus a migration |
 | Money | `Decimal` end to end, stored as scaled integers | Exact totals and exact SQL sums; floats are never used |
 | PDFs | ReportLab | Pure Python, no system dependencies |
-| Auth | None in this version | Out of scope for now; many businesses, identified by `X-Business-Id` |
+| Auth | Register with email + name, Bearer sessions | Password / magic link later |
 | Structure | Feature folders (`router`/`schemas`/`service`/`models`) | Follows the reference architecture repository; a feature can be read in one folder |
 | Style | PEP 8 enforced by Ruff, Python 3.12 idioms | One consistent codebase |
 
@@ -258,9 +258,8 @@ them.
        transaction.
 4. **`dependencies.py`**
    - `CurrentBusiness` answers "which business is this request for?"
-   - It reads `X-Business-Id`. Every later router depends on it, and
-     every later service filters by `business.id`.
-   - Adding authentication later only changes this one function.
+   - It uses the signed-in user and optional `X-Business-Id`. Every later
+     router depends on it, and every later service filters by `business.id`.
 5. **`app/bootstrap.py`** — `seed_required_rows` seeds the platform row, then
    the business, and is called from the lifespan in `factory.py`. It lives
    above both features so `platform` never imports `business`.
