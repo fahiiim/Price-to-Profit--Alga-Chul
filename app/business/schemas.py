@@ -16,20 +16,21 @@ class BusinessRead(QuoteDefaults):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    business_name: str = Field(examples=["Amna Hair Studio"])
-    owner_name: str | None = Field(examples=["Amna"])
+    business_name: str = Field(examples=["Glam Strands Studio"])
+    owner_name: str | None = Field(examples=["Amna Khan"])
+    tagline: str | None = Field(examples=["Luxury hair extensions · Dubai"])
     phone: str | None = Field(examples=["+971501234567"])
-    email: str | None = Field(examples=["hello@amnahair.ae"])
-    address: str | None = Field(examples=["Jumeirah Lake Towers, Dubai"])
-    instagram: str | None = Field(examples=["@amnahair"])
-    website: str | None = Field(examples=["https://amnahair.ae"])
+    email: str | None = Field(examples=["hello@glamstrands.ae"])
+    address: str | None = Field(examples=["Jumeirah 1, Dubai, UAE"])
+    instagram: str | None = Field(examples=["@glamstrands.dxb"])
+    website: str | None = Field(examples=["https://glamstrands.ae"])
     tax_registration_number: str | None = Field(
         description="VAT registration number (TRN) printed on invoices.",
         examples=["100123456700003"],
     )
     payment_link: str | None = Field(
         description="Link printed on quotes and invoices so clients can pay.",
-        examples=["https://pay.example.com/amnahair"],
+        examples=["https://pay.glamstrands.ae/deposit"],
     )
     quote_prefix: str = Field(examples=["Q"])
     invoice_prefix: str = Field(examples=["INV"])
@@ -45,14 +46,16 @@ class BusinessRead(QuoteDefaults):
         return LOGO_URL if self.logo_path else None
 
 
-class BusinessUpdate(BaseModel):
-    """Partial update. Only the fields you send are changed.
+class BusinessCreate(BaseModel):
+    """First-launch setup. Creates a new business and copies platform defaults.
 
-    Send `null` to clear an optional text field such as `instagram`.
+    Send the fields from the setup wizard. Anything omitted (currency, VAT,
+    deposit, terms, …) is filled from the platform quote defaults.
     """
 
-    business_name: str | None = Field(default=None, min_length=1, max_length=120)
+    business_name: str = Field(min_length=1, max_length=120)
     owner_name: str | None = Field(default=None, max_length=120)
+    tagline: str | None = Field(default=None, max_length=160)
     phone: str | None = Field(default=None, max_length=40)
     email: EmailStr | None = None
     address: str | None = Field(default=None, max_length=300)
@@ -80,9 +83,68 @@ class BusinessUpdate(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "business_name": "Amna Hair Studio",
+                    "business_name": "Glam Strands Studio",
+                    "owner_name": "Amna Khan",
+                    "tagline": "Luxury hair extensions · Dubai",
                     "phone": "+971501234567",
-                    "payment_link": "https://pay.example.com/amnahair",
+                    "email": "hello@glamstrands.ae",
+                    "instagram": "@glamstrands.dxb",
+                    "website": "https://glamstrands.ae",
+                    "address": "Jumeirah 1, Dubai, UAE",
+                    "currency": "AED",
+                    "tax_rate_percent": "5",
+                    "deposit_mode": "percent",
+                    "deposit_value": "30",
+                    "payment_link": "https://pay.glamstrands.ae/deposit",
+                    "quote_terms": (
+                        "Deposit secures your appointment and is "
+                        "non-refundable. Balance due on the day."
+                    ),
+                }
+            ]
+        }
+    )
+
+
+class BusinessUpdate(BaseModel):
+    """Partial update. Only the fields you send are changed.
+
+    Send `null` to clear an optional text field such as `instagram`.
+    """
+
+    business_name: str | None = Field(default=None, min_length=1, max_length=120)
+    owner_name: str | None = Field(default=None, max_length=120)
+    tagline: str | None = Field(default=None, max_length=160)
+    phone: str | None = Field(default=None, max_length=40)
+    email: EmailStr | None = None
+    address: str | None = Field(default=None, max_length=300)
+    instagram: str | None = Field(default=None, max_length=60)
+    website: HttpLink | None = None
+    tax_registration_number: str | None = Field(default=None, max_length=40)
+    payment_link: HttpLink | None = None
+    quote_prefix: str | None = Field(default=None, pattern=PREFIX_PATTERN)
+    invoice_prefix: str | None = Field(default=None, pattern=PREFIX_PATTERN)
+
+    currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
+    tax_label: str | None = Field(default=None, min_length=1, max_length=20)
+    tax_rate_percent: Percent | None = None
+    hourly_rate: Money | None = None
+    default_markup_percent: MarkupPercent | None = None
+    deposit_mode: DepositMode | None = None
+    deposit_value: Money | None = None
+    whole_packs_default: bool | None = None
+    quote_validity_days: int | None = Field(default=None, ge=1, le=365)
+    invoice_due_days: int | None = Field(default=None, ge=0, le=365)
+    quote_terms: str | None = Field(default=None, max_length=2000)
+    invoice_terms: str | None = Field(default=None, max_length=2000)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "business_name": "Glam Strands Studio",
+                    "phone": "+971501234567",
+                    "payment_link": "https://pay.glamstrands.ae/deposit",
                     "hourly_rate": "180.00",
                     "default_markup_percent": "60.00",
                 }
