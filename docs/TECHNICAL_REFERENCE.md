@@ -116,8 +116,9 @@ Example: `POST /v1/quotes` with the worked example body.
    `business/dependencies.py`):
    - `SessionDep` → `get_session` opens a SQLAlchemy `Session` from
      `request.app.state.session_factory` and closes it after the response.
-   - `CurrentBusiness` → `get_current_business` → `business.service.get_business`
-     loads the row named by the `X-Business-Id` header.
+   - `CurrentUser` → Bearer token → `auth.service.get_session_by_token`.
+   - `CurrentBusiness` → that user's studio (`X-Business-Id` if they have
+     more than one).
 4. **Validation**: FastAPI validates the JSON into `QuoteCreate`
    (`quotes/schemas.py`). Money fields use `core.schemas.Money`, which parses
    decimals and rounds them half-up to 2 dp. A failure raises
@@ -472,8 +473,9 @@ default fields from the mixin.
 | `_has_image_signature`, `_delete_media_file` | Helpers | internal |
 
 ### `business/dependencies.py`
-- **`get_current_business(session, x_business_id)`** →
-  `get_business(session, x_business_id)` using header `X-Business-Id`.
+- **`get_current_business(session, user, x_business_id)`** →
+  `resolve_business` for the signed-in user (`X-Business-Id` optional
+  when they have one studio).
 - **`CurrentBusiness`** — `Annotated[BusinessProfile, Depends(...)]`.
 
 Every feature router declares `business: CurrentBusiness` and passes it to its
@@ -822,6 +824,7 @@ quotes never change (they hold snapshots).
 | `migrations/script.py.mako` | Template for new revisions |
 | `migrations/versions/20261015_0001_initial_schema.py` | Revision `0001`: all seven tables, indexes and constraints |
 | `migrations/versions/20261017_0002_multi_business.py` | Revision `0002`: `tagline`, activity `business_id`, quote/invoice numbers unique per business |
+| `migrations/versions/20261017_0003_auth.py` | Revision `0003`: `users`, `auth_sessions`, `business_profiles.user_id` |
 
 ---
 
