@@ -825,6 +825,7 @@ quotes never change (they hold snapshots).
 | `migrations/versions/20261015_0001_initial_schema.py` | Revision `0001`: all seven tables, indexes and constraints |
 | `migrations/versions/20261017_0002_multi_business.py` | Revision `0002`: `tagline`, activity `business_id`, quote/invoice numbers unique per business |
 | `migrations/versions/20261017_0003_auth.py` | Revision `0003`: `users`, `auth_sessions`, `business_profiles.user_id` |
+| `migrations/versions/20261017_0004_password_otp.py` | Revision `0004`: password hash and registration OTP columns |
 
 ---
 
