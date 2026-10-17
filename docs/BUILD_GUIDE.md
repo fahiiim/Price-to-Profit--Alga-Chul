@@ -50,7 +50,7 @@ Made before writing code, from the product design:
 | Database | SQLite via SQLAlchemy 2 (sync) + Alembic | Zero setup now; switching to Postgres later is a URL change plus a migration |
 | Money | `Decimal` end to end, stored as scaled integers | Exact totals and exact SQL sums; floats are never used |
 | PDFs | ReportLab | Pure Python, no system dependencies |
-| Auth | Register with email + name, Bearer sessions | Password / magic link later |
+| Auth | Email + name + password, OTP, then login issues the token | Email delivery of OTP later |
 | Structure | Feature folders (`router`/`schemas`/`service`/`models`) | Follows the reference architecture repository; a feature can be read in one folder |
 | Style | PEP 8 enforced by Ruff, Python 3.12 idioms | One consistent codebase |
 
