@@ -5,7 +5,7 @@ import hashlib
 import hmac
 import secrets
 
-_N = 2**14
+_N = 2**12
 _R = 8
 _P = 1
 _DKLEN = 32
