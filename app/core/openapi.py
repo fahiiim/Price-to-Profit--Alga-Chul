@@ -14,10 +14,11 @@ also shows the stylist what they really earn: cost, profit and profit per hour.
 ## How to read this API
 
 * **Base path**: every business endpoint lives under `/v1`.
-* **Auth**: `POST /v1/auth/register` with **email** and **name** (no
-  password yet). Send `Authorization: Bearer <access_token>` on every
-  later request. `POST /v1/auth/login` with the same email issues a new
-  token. Public: health, `GET /v1/app-config`, register and login.
+* **Auth**: `POST /v1/auth/register` with **email**, **name** and
+  **password**, then `POST /v1/auth/verify-otp`. **No token is issued
+  until** `POST /v1/auth/login` with email and password. Send
+  `Authorization: Bearer <access_token>` afterwards. Public: health,
+  `GET /v1/app-config`, register, verify-otp, resend-otp and login.
 * **Which business**: `POST /v1/businesses` creates a studio for the
   signed-in account. `X-Business-Id` is only required when that account
   owns more than one studio.
@@ -46,8 +47,8 @@ also shows the stylist what they really earn: cost, profit and profit per hour.
 
 ## Typical flow
 
-1. `POST /v1/auth/register` (email + name), then `POST /v1/businesses` on
-   first launch, then `PUT /v1/business/logo`.
+1. `POST /v1/auth/register` → `POST /v1/auth/verify-otp` →
+   `POST /v1/auth/login`, then `POST /v1/businesses` on first launch.
 2. `POST /v1/library` to save hair products, services and materials.
 3. `POST /v1/quotes/preview` while the stylist edits, for live totals.
 4. `POST /v1/quotes` to save, `PATCH /v1/quotes/{id}/status` as it progresses.
@@ -57,8 +58,9 @@ also shows the stylist what they really earn: cost, profit and profit per hour.
 
 ## Scope
 
-There is **no password or subscription** handling in this version.
-Registration is email and name; sessions are Bearer tokens.
+There is **no subscription** handling in this version. Email delivery of
+OTPs is not wired yet: in `local` the OTP is returned in the register
+response so you can verify without a mailer.
 """
 
 OPENAPI_TAGS = [
@@ -73,8 +75,8 @@ OPENAPI_TAGS = [
     {
         "name": "Auth",
         "description": (
-            "Register with email and name, sign in, read the account, sign out. "
-            "No password in this version."
+            "Register with email, name and password; verify the OTP; then "
+            "log in to get a Bearer token."
         ),
     },
     {
