@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, File, Response, UploadFile, status
 from fastapi.responses import FileResponse
 
+from app.auth.dependencies import CurrentUser
 from app.business.dependencies import CurrentBusiness
 from app.business.models import BusinessProfile
 from app.business.schemas import BusinessCreate, BusinessRead, BusinessUpdate
@@ -17,7 +18,7 @@ from app.core.dependencies import SessionDep, SettingsDep
 from app.core.errors import NotFoundError
 from app.core.schemas import error_responses
 
-router = APIRouter(tags=["Business"], responses=error_responses(422))
+router = APIRouter(tags=["Business"], responses=error_responses(401, 422))
 
 
 @router.post(
@@ -29,19 +30,21 @@ router = APIRouter(tags=["Business"], responses=error_responses(422))
         "First-launch setup for a new stylist. Creates a **new** business "
         "and copies platform quote defaults (currency, VAT, deposit, rates, "
         "terms) onto any fields you omit.\n\n"
-        "The app should store the returned `id` and send it as "
-        "`X-Business-Id` on every later request. Upload the logo separately "
-        "with `PUT /v1/business/logo`.\n\n"
-        "This is the SaaS sign-up step without login: each studio is its own "
-        "row. Login later will attach this id to an account."
+        "Requires a Bearer token from `POST /v1/auth/register`. Upload the "
+        "logo separately with `PUT /v1/business/logo`.\n\n"
+        "If this is the account's only studio, later requests do not need "
+        "`X-Business-Id`. Send the header when the user owns more than one."
     ),
     response_description="The new business profile.",
     responses=error_responses(404),
 )
 def create_business_profile(
-    payload: BusinessCreate, response: Response, session: SessionDep
+    payload: BusinessCreate,
+    response: Response,
+    session: SessionDep,
+    user: CurrentUser,
 ) -> BusinessProfile:
-    business = create_business(session, payload)
+    business = create_business(session, user, payload)
     response.headers["Location"] = f"/v1/businesses/{business.id}"
     return business
 
@@ -52,8 +55,8 @@ def create_business_profile(
     summary="Get the business profile",
     description=(
         "Returns the stylist's business details, branding and pricing "
-        "defaults for the business in `X-Business-Id`. The app loads this "
-        "on start and uses the defaults to pre-fill new quotes."
+        "defaults for the signed-in studio. The app loads this on start and "
+        "uses the defaults to pre-fill new quotes."
     ),
     response_description="The business profile.",
     responses=error_responses(404),
