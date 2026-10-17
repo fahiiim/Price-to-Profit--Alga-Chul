@@ -92,6 +92,7 @@ def create_item(
         entity_type=ENTITY_TYPE,
         entity_id=item.id,
         summary=f"Library {item.kind} '{item.name}' added",
+        business_id=item.business_id,
     )
     session.commit()
     return item
@@ -119,6 +120,7 @@ def update_item(
         entity_type=ENTITY_TYPE,
         entity_id=item.id,
         summary=f"Library {item.kind} '{item.name}' updated",
+        business_id=item.business_id,
     )
     session.commit()
     return item
@@ -132,6 +134,7 @@ def delete_item(session: Session, item: LibraryItem) -> None:
         entity_type=ENTITY_TYPE,
         entity_id=item.id,
         summary=f"Library {item.kind} '{item.name}' deleted",
+        business_id=item.business_id,
     )
     session.delete(item)
     session.commit()
