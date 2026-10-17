@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from tests.conftest import register
+
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 
 
@@ -28,6 +30,7 @@ def test_create_business_copies_platform_defaults(client: TestClient) -> None:
 
 def test_first_launch_setup_creates_a_business(app) -> None:
     with TestClient(app) as anonymous:
+        register(anonymous, email="amna@glamstrands.ae", name="Amna Khan")
         response = anonymous.post(
             "/v1/businesses",
             json={
@@ -55,10 +58,6 @@ def test_first_launch_setup_creates_a_business(app) -> None:
         assert body["hourly_rate"] == "180.00"
         assert response.headers["location"] == f"/v1/businesses/{body['id']}"
 
-        missing = anonymous.get("/v1/business")
-        assert missing.status_code == 422
-
-        anonymous.headers["X-Business-Id"] = str(body["id"])
         loaded = anonymous.get("/v1/business").json()
         assert loaded["owner_name"] == "Amna Khan"
         assert loaded["payment_link"] == "https://pay.glamstrands.ae/deposit"
@@ -66,6 +65,7 @@ def test_first_launch_setup_creates_a_business(app) -> None:
 
 def test_businesses_are_isolated(app) -> None:
     with TestClient(app) as api:
+        register(api, email="owner@example.com", name="Owner")
         first = api.post("/v1/businesses", json={"business_name": "Studio A"}).json()
         second = api.post("/v1/businesses", json={"business_name": "Studio B"}).json()
 
@@ -87,6 +87,23 @@ def test_businesses_are_isolated(app) -> None:
 
         studios = api.get("/v1/admin/businesses").json()
         assert studios["total"] == 2
+
+
+def test_users_cannot_see_each_others_businesses(app) -> None:
+    with TestClient(app) as api:
+        register(api, email="a@example.com", name="A")
+        studio = api.post("/v1/businesses", json={"business_name": "A Studio"}).json()
+        api.post(
+            "/v1/library",
+            json={"kind": "fee", "name": "A only", "unit_price": "10"},
+        )
+
+        register(api, email="b@example.com", name="B")
+        listed = api.get("/v1/admin/businesses").json()
+        assert listed["total"] == 0
+        api.headers["X-Business-Id"] = str(studio["id"])
+        assert api.get("/v1/business").status_code == 404
+        assert api.get("/v1/library").status_code == 404
 
 
 def test_update_business(client: TestClient) -> None:
