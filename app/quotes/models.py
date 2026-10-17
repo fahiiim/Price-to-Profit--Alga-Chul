@@ -2,7 +2,15 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    Date,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
@@ -22,12 +30,15 @@ class Quote(TimestampMixin, Base):
     """
 
     __tablename__ = "quotes"
+    __table_args__ = (
+        UniqueConstraint("business_id", "number", name="uq_quotes_business_id_number"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     business_id: Mapped[int] = mapped_column(
         ForeignKey("business_profiles.id", ondelete="CASCADE"), index=True
     )
-    number: Mapped[str] = mapped_column(String(20), unique=True)
+    number: Mapped[str] = mapped_column(String(20))
     status: Mapped[QuoteStatus] = mapped_column(
         str_enum(QuoteStatus), default=QuoteStatus.DRAFT, index=True
     )
