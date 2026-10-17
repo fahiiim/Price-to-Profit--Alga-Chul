@@ -19,7 +19,7 @@ from app.pricing.enums import LineKind
 router = APIRouter(
     prefix="/library",
     tags=["Library"],
-    responses=error_responses(422),
+    responses=error_responses(401, 422),
 )
 
 
