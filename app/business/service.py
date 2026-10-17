@@ -3,12 +3,13 @@
 from pathlib import Path
 from uuid import uuid4
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.activity.enums import ActivityAction
 from app.activity.service import record_activity
 from app.business.models import BusinessProfile
-from app.business.schemas import REQUIRED_FIELDS, BusinessUpdate
+from app.business.schemas import REQUIRED_FIELDS, BusinessCreate, BusinessUpdate
 from app.core.errors import (
     BusinessRuleError,
     FileTooLargeError,
@@ -16,31 +17,57 @@ from app.core.errors import (
     UnsupportedFileTypeError,
 )
 from app.platform.models import PlatformSettings
-from app.platform.service import copy_quote_defaults
+from app.platform.service import copy_quote_defaults, get_platform_settings
 from app.pricing.enums import DepositMode
 
-BUSINESS_ID = 1
 ENTITY_TYPE = "business"
 LOGO_FOLDER = "logos"
 LOGO_EXTENSIONS = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
 
 
-def ensure_business(session: Session, defaults: PlatformSettings) -> BusinessProfile:
-    """Return the business, creating it from the platform defaults if missing."""
-    business = session.get(BusinessProfile, BUSINESS_ID)
-    if business is None:
-        business = BusinessProfile(id=BUSINESS_ID)
-        copy_quote_defaults(defaults, business)
-        session.add(business)
-        session.flush()
+def create_business(session: Session, payload: BusinessCreate) -> BusinessProfile:
+    """Create a business from first-launch setup.
+
+    Omitted pricing fields are copied from the platform quote defaults.
+    """
+    business = BusinessProfile()
+    copy_quote_defaults(get_platform_settings(session), business)
+    for name, value in payload.model_dump(exclude_unset=True).items():
+        setattr(business, name, value)
+    _ensure_valid_deposit(business)
+    session.add(business)
+    session.flush()
+
+    record_activity(
+        session,
+        action=ActivityAction.BUSINESS_CREATED,
+        entity_type=ENTITY_TYPE,
+        entity_id=business.id,
+        summary=f"Business '{business.business_name}' created",
+        business_id=business.id,
+    )
+    session.commit()
     return business
 
 
-def get_business(session: Session) -> BusinessProfile:
-    business = session.get(BusinessProfile, BUSINESS_ID)
+def get_business(session: Session, business_id: int) -> BusinessProfile:
+    business = session.get(BusinessProfile, business_id)
     if business is None:
-        raise NotFoundError("The business profile has not been initialised.")
+        raise NotFoundError(f"Business {business_id} was not found.")
     return business
+
+
+def list_businesses(
+    session: Session, *, limit: int = 20, offset: int = 0
+) -> tuple[list[BusinessProfile], int]:
+    statement = select(BusinessProfile)
+    total = session.scalar(select(func.count()).select_from(statement.subquery()))
+    rows = session.scalars(
+        statement.order_by(BusinessProfile.created_at.desc(), BusinessProfile.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(rows), total or 0
 
 
 def update_business(
@@ -67,6 +94,7 @@ def update_business(
         entity_type=ENTITY_TYPE,
         entity_id=business.id,
         summary=f"Business profile updated: {', '.join(sorted(changes))}",
+        business_id=business.id,
     )
     session.commit()
     return business
@@ -83,6 +111,7 @@ def apply_platform_defaults(
         entity_type=ENTITY_TYPE,
         entity_id=business.id,
         summary="Platform quote defaults applied to the business profile",
+        business_id=business.id,
     )
     session.commit()
     return business
@@ -100,7 +129,7 @@ def save_logo(
     """Validate and store a new logo, replacing any previous one."""
     extension = _validate_logo(content_type, data, max_bytes)
 
-    relative_path = Path(LOGO_FOLDER) / f"logo-{uuid4().hex}.{extension}"
+    relative_path = Path(LOGO_FOLDER) / f"logo-{business.id}-{uuid4().hex}.{extension}"
     target = media_dir / relative_path
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(data)
@@ -113,6 +142,7 @@ def save_logo(
         entity_type=ENTITY_TYPE,
         entity_id=business.id,
         summary="Business logo updated",
+        business_id=business.id,
     )
     session.commit()
     _delete_media_file(media_dir, previous)
@@ -133,6 +163,7 @@ def remove_logo(
         entity_type=ENTITY_TYPE,
         entity_id=business.id,
         summary="Business logo removed",
+        business_id=business.id,
     )
     session.commit()
     _delete_media_file(media_dir, previous)
