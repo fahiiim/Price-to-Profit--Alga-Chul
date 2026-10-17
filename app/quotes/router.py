@@ -31,7 +31,7 @@ from app.quotes.service import (
 router = APIRouter(
     prefix="/quotes",
     tags=["Quotes"],
-    responses=error_responses(422),
+    responses=error_responses(401, 422),
 )
 
 
