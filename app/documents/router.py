@@ -12,7 +12,7 @@ from app.documents.service import (
     render_quote_pdf,
 )
 
-router = APIRouter(tags=["Documents"], responses=error_responses(404, 422))
+router = APIRouter(tags=["Documents"], responses=error_responses(401, 404, 422))
 
 PDF_RESPONSE = {
     200: {
