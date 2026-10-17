@@ -8,16 +8,16 @@ from app.platform.models import QuoteDefaultsMixin
 class BusinessProfile(QuoteDefaultsMixin, TimestampMixin, Base):
     """The stylist's business. Printed on every quote, invoice and cost sheet.
 
-    The backend currently runs as a single business (id = 1). Library items,
-    quotes and invoices still carry `business_id`, so per-device or
-    per-account businesses can be added later without reshaping the data.
+    Many businesses can exist. Each request names one with the
+    `X-Business-Id` header until login is added.
     """
 
     __tablename__ = "business_profiles"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    business_name: Mapped[str] = mapped_column(String(120), default="My Hair Studio")
+    business_name: Mapped[str] = mapped_column(String(120))
     owner_name: Mapped[str | None] = mapped_column(String(120))
+    tagline: Mapped[str | None] = mapped_column(String(160))
     phone: Mapped[str | None] = mapped_column(String(40))
     email: Mapped[str | None] = mapped_column(String(254))
     address: Mapped[str | None] = mapped_column(String(300))
