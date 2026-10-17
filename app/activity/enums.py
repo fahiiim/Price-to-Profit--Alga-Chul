@@ -4,6 +4,7 @@ from enum import StrEnum
 class ActivityAction(StrEnum):
     """Every change the activity log records, as `<entity>.<verb>`."""
 
+    BUSINESS_CREATED = "business.created"
     BUSINESS_UPDATED = "business.updated"
     LOGO_UPDATED = "business.logo_updated"
     LOGO_REMOVED = "business.logo_removed"
