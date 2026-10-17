@@ -11,7 +11,7 @@ from app.dashboard.schemas import DashboardRead
 from app.dashboard.service import get_dashboard
 
 router = APIRouter(
-    prefix="/dashboard", tags=["Dashboard"], responses=error_responses(422)
+    prefix="/dashboard", tags=["Dashboard"], responses=error_responses(401, 422)
 )
 
 
