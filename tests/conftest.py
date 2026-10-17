@@ -32,13 +32,9 @@ def register(
     assert pending.status_code == 201, pending.text
     otp = pending.json()["otp"]
     assert otp
-    verified = client.post(
-        "/v1/auth/verify-otp", json={"email": email, "otp": otp}
-    )
+    verified = client.post("/v1/auth/verify-otp", json={"email": email, "otp": otp})
     assert verified.status_code == 204, verified.text
-    login = client.post(
-        "/v1/auth/login", json={"email": email, "password": password}
-    )
+    login = client.post("/v1/auth/login", json={"email": email, "password": password})
     assert login.status_code == 200, login.text
     body = login.json()
     client.headers["Authorization"] = f"Bearer {body['access_token']}"
