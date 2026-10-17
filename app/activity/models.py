@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Integer, String
+from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.activity.enums import ActivityAction
@@ -15,6 +15,9 @@ class ActivityLog(Base):
     __tablename__ = "activity_log"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    business_id: Mapped[int | None] = mapped_column(
+        ForeignKey("business_profiles.id", ondelete="CASCADE"), index=True
+    )
     action: Mapped[ActivityAction] = mapped_column(str_enum(ActivityAction))
     entity_type: Mapped[str] = mapped_column(String(40), index=True)
     entity_id: Mapped[int | None] = mapped_column(Integer)
