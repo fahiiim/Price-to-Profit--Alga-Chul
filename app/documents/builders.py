@@ -153,6 +153,7 @@ def build_cost_sheet_document(
 
 def _business_block(business: BusinessProfile, logo_path: Path | None) -> BusinessBlock:
     contact = [
+        business.tagline,
         business.phone,
         business.email,
         business.address,
