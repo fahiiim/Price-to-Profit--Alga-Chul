@@ -18,6 +18,13 @@ class ApplicationError(Exception):
         self.message = message
 
 
+class UnauthorizedError(ApplicationError):
+    """The request has no valid credentials."""
+
+    code = "unauthorized"
+    status_code = HTTPStatus.UNAUTHORIZED
+
+
 class NotFoundError(ApplicationError):
     """The requested resource does not exist."""
 
