@@ -14,6 +14,36 @@ from app.db.registry import Base
 from app.factory import create_app
 from app.quotes.schemas import WORKED_EXAMPLE
 
+TEST_PASSWORD = "a-strong-password"
+
+
+def register(
+    client: TestClient,
+    *,
+    email: str = "amna@example.com",
+    name: str = "Amna Khan",
+    password: str = TEST_PASSWORD,
+) -> dict[str, Any]:
+    """Register, verify OTP, log in and attach the Bearer token."""
+    pending = client.post(
+        "/v1/auth/register",
+        json={"email": email, "name": name, "password": password},
+    )
+    assert pending.status_code == 201, pending.text
+    otp = pending.json()["otp"]
+    assert otp
+    verified = client.post(
+        "/v1/auth/verify-otp", json={"email": email, "otp": otp}
+    )
+    assert verified.status_code == 204, verified.text
+    login = client.post(
+        "/v1/auth/login", json={"email": email, "password": password}
+    )
+    assert login.status_code == 200, login.text
+    body = login.json()
+    client.headers["Authorization"] = f"Bearer {body['access_token']}"
+    return body
+
 
 @pytest.fixture
 def app(tmp_path: Path) -> FastAPI:
@@ -29,8 +59,9 @@ def app(tmp_path: Path) -> FastAPI:
 
 @pytest.fixture
 def client(app: FastAPI) -> Iterator[TestClient]:
-    """Signed-in-as-a-studio: creates a business and sends `X-Business-Id`."""
+    """Signed-in stylist with one studio."""
     with TestClient(app) as test_client:
+        register(test_client)
         created = test_client.post(
             "/v1/businesses", json={"business_name": "Amna Hair Studio"}
         )
