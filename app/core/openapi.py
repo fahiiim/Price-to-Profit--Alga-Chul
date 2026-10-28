@@ -18,7 +18,7 @@ also shows the stylist what they really earn: cost, profit and profit per hour.
   **password**, then `POST /v1/auth/verify-otp`. **No token is issued
   until** `POST /v1/auth/login` with email and password. Send
   `Authorization: Bearer <access_token>` afterwards. Public: health,
-  `GET /v1/app-config`, register, verify-otp, resend-otp and login.
+  `GET /v1/app-config`, register, verify-otp, resend-otp, login and refresh.
 * **Which business**: `POST /v1/businesses` creates a studio for the
   signed-in account. `X-Business-Id` is only required when that account
   owns more than one studio.
