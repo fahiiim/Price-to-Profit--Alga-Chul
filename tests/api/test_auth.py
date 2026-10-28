@@ -24,6 +24,8 @@ def test_verify_otp_then_login(app) -> None:
     with TestClient(app) as client:
         body = register(client, email="amna@glamstrands.ae", name="Amna Khan")
         assert body["token_type"] == "bearer"
+        assert body["access_token"]
+        assert body["refresh_token"]
         assert body["user"]["email"] == "amna@glamstrands.ae"
         assert body["user"]["email_verified"] is True
 
@@ -145,3 +147,117 @@ def test_protected_routes_require_auth(app) -> None:
         assert client.get("/v1/business").status_code == 401
         assert client.get("/v1/quotes").status_code == 401
         assert client.get("/v1/app-config").status_code == 200
+
+
+def test_refresh_token_rotates_and_authenticates(app) -> None:
+    with TestClient(app) as client:
+        body = register(client, email="amna@glamstrands.ae", name="Amna Khan")
+        first_access = body["access_token"]
+        first_refresh = body["refresh_token"]
+
+        response = client.post(
+            "/v1/auth/refresh", json={"refresh_token": first_refresh}
+        )
+        assert response.status_code == 200, response.text
+        renewed = response.json()
+        assert renewed["access_token"] != first_access
+        assert renewed["refresh_token"] != first_refresh
+        assert renewed["user"]["email"] == "amna@glamstrands.ae"
+
+        client.headers["Authorization"] = f"Bearer {renewed['access_token']}"
+        me = client.get("/v1/auth/me")
+        assert me.status_code == 200
+        assert me.json()["name"] == "Amna Khan"
+
+        client.headers["Authorization"] = f"Bearer {first_access}"
+        assert client.get("/v1/auth/me").status_code == 401
+
+
+def test_refresh_token_invalid_or_logged_out(app) -> None:
+    with TestClient(app) as client:
+        body = register(client, email="amna@glamstrands.ae", name="Amna Khan")
+        refresh_tok = body["refresh_token"]
+
+        bad = client.post("/v1/auth/refresh", json={"refresh_token": "wrong-token"})
+        assert bad.status_code == 401
+
+        assert client.post("/v1/auth/logout").status_code == 204
+
+        revoked = client.post("/v1/auth/refresh", json={"refresh_token": refresh_tok})
+        assert revoked.status_code == 401
+
+
+def test_delete_account_removes_user_and_revokes_token(app) -> None:
+    with TestClient(app) as client:
+        register(client, email="delete_me@example.com", name="To Delete")
+
+        # Deleting account requires valid auth
+        response = client.delete("/v1/auth/me")
+        assert response.status_code == 204
+
+        # Token is immediately revoked
+        assert client.get("/v1/auth/me").status_code == 401
+
+        # Cannot log in anymore
+        login_res = client.post(
+            "/v1/auth/login",
+            json={"email": "delete_me@example.com", "password": TEST_PASSWORD},
+        )
+        assert login_res.status_code == 401
+
+        # Email is freed up to register anew
+        re_register = client.post(
+            "/v1/auth/register",
+            json={
+                "email": "delete_me@example.com",
+                "name": "Recreated",
+                "password": TEST_PASSWORD,
+            },
+        )
+        assert re_register.status_code == 201
+
+
+def test_delete_account_cascades_business_and_data(client: TestClient) -> None:
+    # client fixture has business created already
+    # Create a quote
+    created = client.post(
+        "/v1/quotes",
+        json={
+            "client_name": "Test Client",
+            "lines": [
+                {
+                    "kind": "service",
+                    "description": "Fitting",
+                    "quantity": "1",
+                    "unit_price": "100.00",
+                }
+            ],
+        },
+    )
+    assert created.status_code == 201
+    quote_id = created.json()["id"]
+
+    # Invoice the quote
+    invoice_res = client.post(f"/v1/quotes/{quote_id}/invoice", json={})
+    assert invoice_res.status_code == 201
+
+    # Delete the account
+    del_res = client.delete("/v1/auth/me")
+    assert del_res.status_code == 204
+
+    # Now verify all protected calls fail with 401
+    assert client.get("/v1/auth/me").status_code == 401
+    assert client.get("/v1/quotes").status_code == 401
+    assert client.get("/v1/invoices").status_code == 401
+
+
+def test_delete_account_alias_and_unauthorized(app) -> None:
+    with TestClient(app) as client:
+        # Unauthorized without Bearer token
+        assert client.delete("/v1/auth/me").status_code == 401
+        assert client.delete("/v1/auth/account").status_code == 401
+
+        # Alias /account works with Bearer token
+        register(client, email="alias@example.com", name="Alias User")
+        assert client.delete("/v1/auth/account").status_code == 204
+        assert client.get("/v1/auth/me").status_code == 401
