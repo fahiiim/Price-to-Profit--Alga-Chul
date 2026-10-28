@@ -217,25 +217,10 @@ def test_delete_account_removes_user_and_revokes_token(app) -> None:
         assert re_register.status_code == 201
 
 
-def test_delete_account_cascades_business_and_data(client: TestClient) -> None:
-    # client fixture has business created already
-    # Create a quote
-    created = client.post(
-        "/v1/quotes",
-        json={
-            "client_name": "Test Client",
-            "lines": [
-                {
-                    "kind": "service",
-                    "description": "Fitting",
-                    "quantity": "1",
-                    "unit_price": "100.00",
-                }
-            ],
-        },
-    )
-    assert created.status_code == 201
-    quote_id = created.json()["id"]
+def test_delete_account_cascades_business_and_data(
+    client: TestClient, created_quote: dict
+) -> None:
+    quote_id = created_quote["id"]
 
     # Invoice the quote
     invoice_res = client.post(f"/v1/quotes/{quote_id}/invoice", json={})
