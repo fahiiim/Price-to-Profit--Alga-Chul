@@ -95,7 +95,7 @@ description, request examples and its documented error responses in `/docs`.
 |---|---|---|
 | Health | `GET /health/live`, `GET /health/ready` | Process and database checks |
 | App config | `GET /v1/app-config` | Support contacts, legal links, version gate, maintenance mode |
-| Auth | `POST /v1/auth/register`, `/verify-otp`, `/resend-otp`, `/login`, `GET /v1/auth/me`, `POST /v1/auth/logout` | Register, OTP, login (token), sign out |
+| Auth | `POST /v1/auth/register`, `/verify-otp`, `/resend-otp`, `/login`, `/refresh`, `GET /v1/auth/me`, `POST /v1/auth/logout` | Register, OTP, login (access & refresh tokens), token refresh, sign out |
 | Business | `POST /v1/businesses`, `GET/PATCH /v1/business`, `PUT/GET/DELETE /v1/business/logo` | First-launch setup, then branding, contact, logo, payment link and pricing defaults |
 | Library | `GET/POST /v1/library`, `GET/PATCH/DELETE /v1/library/{id}` | Saved hair products, services, materials and fees |
 | Quotes | `POST /v1/quotes/preview`, `GET/POST /v1/quotes`, `GET/PATCH/DELETE /v1/quotes/{id}`, `PATCH /v1/quotes/{id}/status`, `POST /v1/quotes/{id}/duplicate` | Live pricing, CRUD, status workflow, search |
@@ -112,8 +112,9 @@ description, request examples and its documented error responses in `/docs`.
 - **Lists** are paginated with `limit` (1–100, default 20) and `offset`, and
   return `{"items": [...], "total": n, "limit": l, "offset": o}`.
 - **Auth**: `POST /v1/auth/register` with `{email, name, password}` →
-  `POST /v1/auth/verify-otp` → `POST /v1/auth/login`. The token is issued
-  **only on login**. Send `Authorization: Bearer <access_token>` afterwards.
+  `POST /v1/auth/verify-otp` → `POST /v1/auth/login`. Access and refresh
+  tokens are issued on login. Send `Authorization: Bearer <access_token>`
+  afterwards, and use `POST /v1/auth/refresh` to renew sessions.
 - **Which business**: `POST /v1/businesses` after sign-up. Send
   **`X-Business-Id`** only when the account has more than one studio.
 - **Creates** return `201 Created` with a `Location` header; **deletes** return
