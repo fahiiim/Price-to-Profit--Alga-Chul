@@ -4,6 +4,7 @@ from app.auth.dependencies import CurrentSession, CurrentUser
 from app.auth.models import User
 from app.auth.schemas import (
     LoginRequest,
+    RefreshTokenRequest,
     RegisterPendingRead,
     RegisterRequest,
     ResendOtpRequest,
@@ -12,8 +13,10 @@ from app.auth.schemas import (
     VerifyOtpRequest,
 )
 from app.auth.service import (
+    delete_user_account,
     login_user,
     logout_session,
+    refresh_session,
     register_user,
     resend_otp,
     verify_otp,
@@ -99,15 +102,33 @@ def resend_registration_otp(
     summary="Sign in",
     description=(
         "Email and password. The email must already be verified with the OTP. "
-        "This is the only endpoint that issues an access token."
+        "Issues an access token and a refresh token."
     ),
-    response_description="A session token.",
+    response_description="A session token pair (access token and refresh token).",
     responses=error_responses(401),
 )
 def login(
     payload: LoginRequest, session: SessionDep, settings: SettingsDep
 ) -> TokenResponse:
     return login_user(session, payload, session_days=settings.session_days)
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    summary="Refresh session tokens",
+    description=(
+        "Exchange a valid refresh token for a new access token and refresh token."
+    ),
+    response_description="A renewed session token pair.",
+    responses=error_responses(401),
+)
+def refresh(
+    payload: RefreshTokenRequest, session: SessionDep, settings: SettingsDep
+) -> TokenResponse:
+    return refresh_session(
+        session, payload.refresh_token, session_days=settings.session_days
+    )
 
 
 @router.get(
@@ -131,4 +152,27 @@ def get_me(user: CurrentUser) -> User:
 )
 def logout(auth_session: CurrentSession, session: SessionDep) -> Response:
     logout_session(session, auth_session)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete(
+    "/me",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete account",
+    description=(
+        "Permanently delete the signed-in user's account and all associated "
+        "data (studios, quotes, invoices, library items and sessions)."
+    ),
+    responses=error_responses(401),
+)
+@router.delete(
+    "/account",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete account (alias)",
+    include_in_schema=False,
+)
+def delete_account(
+    user: CurrentUser, session: SessionDep, settings: SettingsDep
+) -> Response:
+    delete_user_account(session, user, media_dir=settings.media_dir)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
