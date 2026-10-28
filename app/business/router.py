@@ -111,6 +111,7 @@ def upload_logo(
         data=data,
         media_dir=settings.media_dir,
         max_bytes=settings.max_logo_bytes,
+        settings=settings,
     )
 
 
@@ -142,4 +143,4 @@ def download_logo(business: CurrentBusiness, settings: SettingsDep) -> FileRespo
 def delete_logo(
     business: CurrentBusiness, session: SessionDep, settings: SettingsDep
 ) -> None:
-    remove_logo(session, business, settings.media_dir)
+    remove_logo(session, business, settings.media_dir, settings=settings)

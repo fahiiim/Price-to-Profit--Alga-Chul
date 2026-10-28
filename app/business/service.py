@@ -11,12 +11,14 @@ from app.activity.service import record_activity
 from app.auth.models import User
 from app.business.models import BusinessProfile
 from app.business.schemas import REQUIRED_FIELDS, BusinessCreate, BusinessUpdate
+from app.core.config import Settings
 from app.core.errors import (
     BusinessRuleError,
     FileTooLargeError,
     NotFoundError,
     UnsupportedFileTypeError,
 )
+from app.core.storage import delete_from_s3, upload_to_s3
 from app.platform.models import PlatformSettings
 from app.platform.service import copy_quote_defaults, get_platform_settings
 from app.pricing.enums import DepositMode
@@ -171,6 +173,7 @@ def save_logo(
     data: bytes,
     media_dir: Path,
     max_bytes: int,
+    settings: Settings | None = None,
 ) -> BusinessProfile:
     """Validate and store a new logo, replacing any previous one."""
     extension = _validate_logo(content_type, data, max_bytes)
@@ -179,6 +182,20 @@ def save_logo(
     target = media_dir / relative_path
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(data)
+
+    if settings is not None:
+        upload_to_s3(
+            settings,
+            key=f"images/logos/{relative_path.name}",
+            data=data,
+            content_type=content_type or f"image/{extension}",
+            tags={
+                "type": "logo",
+                "category": "image",
+                "business_id": str(business.id),
+                "business_name": business.business_name,
+            },
+        )
 
     previous = business.logo_path
     business.logo_path = relative_path.as_posix()
@@ -192,11 +209,16 @@ def save_logo(
     )
     session.commit()
     _delete_media_file(media_dir, previous)
+    if previous and settings:
+        delete_from_s3(settings, key=f"images/logos/{Path(previous).name}")
     return business
 
 
 def remove_logo(
-    session: Session, business: BusinessProfile, media_dir: Path
+    session: Session,
+    business: BusinessProfile,
+    media_dir: Path,
+    settings: Settings | None = None,
 ) -> BusinessProfile:
     previous = business.logo_path
     if previous is None:
@@ -213,6 +235,8 @@ def remove_logo(
     )
     session.commit()
     _delete_media_file(media_dir, previous)
+    if previous and settings:
+        delete_from_s3(settings, key=f"images/logos/{Path(previous).name}")
     return business
 
 

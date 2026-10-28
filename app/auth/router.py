@@ -174,5 +174,5 @@ def logout(auth_session: CurrentSession, session: SessionDep) -> Response:
 def delete_account(
     user: CurrentUser, session: SessionDep, settings: SettingsDep
 ) -> Response:
-    delete_user_account(session, user, media_dir=settings.media_dir)
+    delete_user_account(session, user, media_dir=settings.media_dir, settings=settings)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["*"]
     session_days: int = 30
     otp_minutes: int = 10
+    s3_bucket_name: str | None = None
+    s3_region: str = "us-east-1"
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
+    s3_endpoint_url: str | None = None
 
 
 @lru_cache(maxsize=1)

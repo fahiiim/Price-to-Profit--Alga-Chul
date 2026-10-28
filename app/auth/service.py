@@ -21,7 +21,9 @@ from app.auth.schemas import (
 from app.auth.tokens import generate_token, hash_token
 from app.business.models import BusinessProfile
 from app.core.clock import utc_now
+from app.core.config import Settings
 from app.core.errors import BusinessRuleError, ConflictError, UnauthorizedError
+from app.core.storage import delete_from_s3
 from app.invoices.models import Invoice
 from app.library.models import LibraryItem
 from app.quotes.models import Quote, QuoteLine
@@ -212,7 +214,11 @@ def refresh_session(
 
 
 def delete_user_account(
-    session: Session, user: User, *, media_dir: Path | None = None
+    session: Session,
+    user: User,
+    *,
+    media_dir: Path | None = None,
+    settings: Settings | None = None,
 ) -> None:
     """Permanently delete a user account and all owned data."""
     business_ids = list(
@@ -222,19 +228,21 @@ def delete_user_account(
     )
 
     if business_ids:
-        # 1. Clean up logos on disk
-        if media_dir is not None:
-            logos = list(
-                session.scalars(
-                    select(BusinessProfile.logo_path).where(
-                        BusinessProfile.id.in_(business_ids),
-                        BusinessProfile.logo_path.is_not(None),
-                    )
+        # 1. Clean up logos on disk and S3
+        logos = list(
+            session.scalars(
+                select(BusinessProfile.logo_path).where(
+                    BusinessProfile.id.in_(business_ids),
+                    BusinessProfile.logo_path.is_not(None),
                 )
             )
-            for logo_path in logos:
-                if logo_path:
+        )
+        for logo_path in logos:
+            if logo_path:
+                if media_dir is not None:
                     (media_dir / logo_path).unlink(missing_ok=True)
+                if settings is not None:
+                    delete_from_s3(settings, key=f"images/logos/{Path(logo_path).name}")
 
         # 2. Delete invoices first to satisfy quote_id RESTRICT constraint
         session.execute(delete(Invoice).where(Invoice.business_id.in_(business_ids)))

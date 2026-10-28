@@ -51,7 +51,9 @@ def download_quote_pdf(
     settings: SettingsDep,
     download: DownloadParam = False,
 ) -> Response:
-    document = render_quote_pdf(session, business, quote_id, settings.media_dir)
+    document = render_quote_pdf(
+        session, business, quote_id, settings.media_dir, settings=settings
+    )
     return _pdf_response(document, download=download)
 
 
@@ -73,7 +75,9 @@ def download_cost_sheet_pdf(
     settings: SettingsDep,
     download: DownloadParam = False,
 ) -> Response:
-    document = render_cost_sheet_pdf(session, business, quote_id, settings.media_dir)
+    document = render_cost_sheet_pdf(
+        session, business, quote_id, settings.media_dir, settings=settings
+    )
     return _pdf_response(document, download=download)
 
 
@@ -95,7 +99,9 @@ def download_invoice_pdf(
     settings: SettingsDep,
     download: DownloadParam = False,
 ) -> Response:
-    document = render_invoice_pdf(session, business, invoice_id, settings.media_dir)
+    document = render_invoice_pdf(
+        session, business, invoice_id, settings.media_dir, settings=settings
+    )
     return _pdf_response(document, download=download)
 
 
