@@ -95,7 +95,7 @@ description, request examples and its documented error responses in `/docs`.
 |---|---|---|
 | Health | `GET /health/live`, `GET /health/ready` | Process and database checks |
 | App config | `GET /v1/app-config` | Support contacts, legal links, version gate, maintenance mode |
-| Auth | `POST /v1/auth/register`, `/verify-otp`, `/resend-otp`, `/login`, `/refresh`, `GET /v1/auth/me`, `POST /v1/auth/logout` | Register, OTP, login (access & refresh tokens), token refresh, sign out |
+| Auth | `POST /v1/auth/register`, `/verify-otp`, `/resend-otp`, `/login`, `/refresh`, `GET/DELETE /v1/auth/me`, `POST /v1/auth/logout` | Register, OTP, login (access & refresh tokens), token refresh, view/delete account, sign out |
 | Business | `POST /v1/businesses`, `GET/PATCH /v1/business`, `PUT/GET/DELETE /v1/business/logo` | First-launch setup, then branding, contact, logo, payment link and pricing defaults |
 | Library | `GET/POST /v1/library`, `GET/PATCH/DELETE /v1/library/{id}` | Saved hair products, services, materials and fees |
 | Quotes | `POST /v1/quotes/preview`, `GET/POST /v1/quotes`, `GET/PATCH/DELETE /v1/quotes/{id}`, `PATCH /v1/quotes/{id}/status`, `POST /v1/quotes/{id}/duplicate` | Live pricing, CRUD, status workflow, search |
