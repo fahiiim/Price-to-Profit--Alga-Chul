@@ -94,6 +94,14 @@ jobs:
             sudo chown -R $USER:$USER /var/www/price-to-profit
             cd /var/www/price-to-profit
 
+            # Ensure Docker is installed on EC2
+            if ! command -v docker &> /dev/null; then
+              echo "==> Docker not found on EC2. Installing Docker..."
+              curl -fsSL https://get.docker.com | sudo sh
+              sudo usermod -aG docker $USER || true
+              sudo systemctl enable --now docker
+            fi
+
             # Initialize repo if needed, otherwise pull latest
             if [ ! -d ".git" ]; then
               git clone https://github.com/${{ github.repository }}.git .
@@ -104,17 +112,13 @@ jobs:
             # Auto-write production .env from GitHub secrets (no manual editing needed!)
             echo "$ENV_CONTENT" > .env
 
-            # Deploy via Docker if installed, otherwise fallback to local python
-            if command -v docker &> /dev/null; then
-              docker compose down || true
-              docker compose up -d --build
-            else
-              if [ ! -d ".venv" ]; then
-                python3.12 -m venv .venv || python3 -m venv .venv
-              fi
-              source .venv/bin/activate
-              pip install --upgrade pip
-              pip install -e "."
-              alembic upgrade head
-              sudo systemctl restart price-to-profit || true
-            fi
+            # Run Docker containers
+            echo "==> Starting containers with Docker Compose..."
+            sudo docker compose down || true
+            sudo docker compose up -d --build
+
+            # Status check
+            sleep 6
+            sudo docker compose ps
+            echo "==> Checking API health probe..."
+            curl -I http://localhost:8000/health/live || true
