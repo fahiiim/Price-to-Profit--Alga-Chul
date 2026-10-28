@@ -46,6 +46,9 @@ class AuthSession(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    refresh_token_hash: Mapped[str | None] = mapped_column(
+        String(64), unique=True, nullable=True
+    )
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
 
