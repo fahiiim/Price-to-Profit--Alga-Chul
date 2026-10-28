@@ -63,4 +63,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     register_exception_handlers(app)
     app.include_router(health_router)
     app.include_router(api_router)
+
+    @app.get("/", include_in_schema=False)
+    def root_redirect():
+        from fastapi.responses import RedirectResponse
+
+        return RedirectResponse(url="/docs")
+
     return app

@@ -121,4 +121,5 @@ jobs:
             sleep 6
             sudo docker compose ps
             echo "==> Checking API health probe..."
-            curl -I http://localhost:8000/health/live || true
+            curl -sSf http://localhost:8000/health/live && echo " -> Health probe OK" || true
+            curl -sSf -L http://localhost:8000/ -o /dev/null && echo " -> Root redirect OK" || true
