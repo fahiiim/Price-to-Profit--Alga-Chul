@@ -84,20 +84,36 @@ class UserRead(BaseModel):
         return self.email_verified_at is not None
 
 
+class RefreshTokenRequest(BaseModel):
+    """Exchange a refresh token for a new session token pair."""
+
+    refresh_token: str = Field(
+        min_length=1,
+        description="The refresh token received from login.",
+    )
+
+
 class TokenResponse(BaseModel):
     """Returned by login. Send `access_token` as a Bearer token."""
 
     access_token: str = Field(description="Opaque session token.")
+    refresh_token: str = Field(description="Opaque token used to refresh the session.")
     token_type: str = Field(default="bearer", examples=["bearer"])
     expires_at: datetime = Field(description="When this session stops working.")
     user: UserRead
 
     @classmethod
     def of(
-        cls, *, access_token: str, expires_at: datetime, user: object
+        cls,
+        *,
+        access_token: str,
+        refresh_token: str,
+        expires_at: datetime,
+        user: object,
     ) -> "TokenResponse":
         return cls(
             access_token=access_token,
+            refresh_token=refresh_token,
             token_type="bearer",
             expires_at=expires_at,
             user=UserRead.model_validate(user),
