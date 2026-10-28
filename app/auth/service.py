@@ -1,10 +1,12 @@
 """Account use cases. Tokens are issued only on login, after OTP verification."""
 
 from datetime import datetime, timedelta
+from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.activity.models import ActivityLog
 from app.auth.models import AuthSession, User
 from app.auth.otp import OTP_MAX_ATTEMPTS, generate_otp, hash_otp
 from app.auth.passwords import hash_password, verify_password
@@ -17,8 +19,12 @@ from app.auth.schemas import (
     VerifyOtpRequest,
 )
 from app.auth.tokens import generate_token, hash_token
+from app.business.models import BusinessProfile
 from app.core.clock import utc_now
 from app.core.errors import BusinessRuleError, ConflictError, UnauthorizedError
+from app.invoices.models import Invoice
+from app.library.models import LibraryItem
+from app.quotes.models import Quote, QuoteLine
 
 OTP_SENT_MESSAGE = "Enter the 6-digit code we sent to verify your email."
 
@@ -154,15 +160,106 @@ def _pending_response(
 
 
 def _issue_token(session: Session, user: User, *, session_days: int) -> TokenResponse:
-    raw = generate_token()
+    access_token = generate_token()
+    refresh_token = generate_token()
     expires_at = utc_now() + timedelta(days=session_days)
     session.add(
         AuthSession(
             user_id=user.id,
-            token_hash=hash_token(raw),
+            token_hash=hash_token(access_token),
+            refresh_token_hash=hash_token(refresh_token),
             expires_at=expires_at,
         )
     )
     session.commit()
     session.refresh(user)
-    return TokenResponse.of(access_token=raw, expires_at=expires_at, user=user)
+    return TokenResponse.of(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_at=expires_at,
+        user=user,
+    )
+
+
+def refresh_session(
+    session: Session, refresh_token: str, *, session_days: int
+) -> TokenResponse:
+    if not refresh_token:
+        raise UnauthorizedError("Sign in to continue.")
+    hashed = hash_token(refresh_token)
+    auth_session = session.scalar(
+        select(AuthSession).where(AuthSession.refresh_token_hash == hashed)
+    )
+    if auth_session is None or auth_session.expires_at <= utc_now():
+        raise UnauthorizedError("Session has expired or is invalid. Sign in again.")
+
+    new_access_token = generate_token()
+    new_refresh_token = generate_token()
+    expires_at = utc_now() + timedelta(days=session_days)
+
+    auth_session.token_hash = hash_token(new_access_token)
+    auth_session.refresh_token_hash = hash_token(new_refresh_token)
+    auth_session.expires_at = expires_at
+
+    session.commit()
+    session.refresh(auth_session.user)
+    return TokenResponse.of(
+        access_token=new_access_token,
+        refresh_token=new_refresh_token,
+        expires_at=expires_at,
+        user=auth_session.user,
+    )
+
+
+def delete_user_account(
+    session: Session, user: User, *, media_dir: Path | None = None
+) -> None:
+    """Permanently delete a user account and all owned data."""
+    business_ids = list(
+        session.scalars(
+            select(BusinessProfile.id).where(BusinessProfile.user_id == user.id)
+        )
+    )
+
+    if business_ids:
+        # 1. Clean up logos on disk
+        if media_dir is not None:
+            logos = list(
+                session.scalars(
+                    select(BusinessProfile.logo_path).where(
+                        BusinessProfile.id.in_(business_ids),
+                        BusinessProfile.logo_path.is_not(None),
+                    )
+                )
+            )
+            for logo_path in logos:
+                if logo_path:
+                    (media_dir / logo_path).unlink(missing_ok=True)
+
+        # 2. Delete invoices first to satisfy quote_id RESTRICT constraint
+        session.execute(delete(Invoice).where(Invoice.business_id.in_(business_ids)))
+
+        # 3. Delete quote lines and quotes
+        quote_ids = select(Quote.id).where(Quote.business_id.in_(business_ids))
+        session.execute(delete(QuoteLine).where(QuoteLine.quote_id.in_(quote_ids)))
+        session.execute(delete(Quote).where(Quote.business_id.in_(business_ids)))
+
+        # 4. Delete library items and activity logs
+        session.execute(
+            delete(LibraryItem).where(LibraryItem.business_id.in_(business_ids))
+        )
+        session.execute(
+            delete(ActivityLog).where(ActivityLog.business_id.in_(business_ids))
+        )
+
+        # 5. Delete businesses
+        session.execute(
+            delete(BusinessProfile).where(BusinessProfile.id.in_(business_ids))
+        )
+
+    # 6. Delete all auth sessions for this user
+    session.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
+
+    # 7. Delete the user record
+    session.delete(user)
+    session.commit()
