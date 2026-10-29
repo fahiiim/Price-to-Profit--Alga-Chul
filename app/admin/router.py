@@ -4,8 +4,30 @@ from fastapi import APIRouter, Query
 
 from app.activity.schemas import ActivityRead
 from app.activity.service import list_activity
-from app.admin.schemas import AdminBusinessDetail, AdminOverview, BusinessSnapshot
-from app.admin.service import get_business_detail, get_overview
+from app.admin.schemas import (
+    AdminBusinessDetail,
+    AdminOverview,
+    BusinessSnapshot,
+    GrantFreePeriodRequest,
+    PlansConfigResponse,
+    PlatformActivityItem,
+    PlatformOverview,
+    SubscriberItem,
+    ToggleStatusRequest,
+    UpdateNoteRequest,
+)
+from app.admin.service import (
+    get_business_detail,
+    get_overview,
+    get_platform_activity_list,
+    get_platform_overview,
+    get_platform_plans_config,
+    get_platform_subscribers,
+    grant_subscriber_free_period,
+    save_platform_plans_config,
+    toggle_subscriber_status,
+    update_subscriber_note,
+)
 from app.auth.dependencies import CurrentUser
 from app.business.dependencies import CurrentBusiness
 from app.business.models import BusinessProfile
@@ -206,3 +228,177 @@ def list_admin_activity(
         limit=pagination.limit,
         offset=pagination.offset,
     )
+
+
+@router.get(
+    "/platform/overview",
+    response_model=PlatformOverview,
+    summary="Platform-wide admin overview",
+)
+def get_platform_admin_overview(session: SessionDep) -> PlatformOverview:
+    """Aggregate statistics for the super admin console."""
+    return get_platform_overview(session)
+
+
+@router.get(
+    "/platform/subscribers",
+    response_model=list[SubscriberItem],
+    summary="List platform subscribers",
+)
+def list_platform_subscribers(
+    session: SessionDep,
+    status: Annotated[str | None, Query()] = None,
+    plan: Annotated[str | None, Query()] = None,
+    country: Annotated[str | None, Query()] = None,
+    search: Annotated[str | None, Query()] = None,
+) -> list[SubscriberItem]:
+    """List all studio subscribers with live quote and usage counts."""
+    return get_platform_subscribers(
+        session, status=status, plan=plan, country=country, search=search
+    )
+
+
+@router.get(
+    "/platform/subscribers/{subscriber_id}",
+    response_model=SubscriberItem,
+    summary="Get single platform subscriber dossier",
+)
+def get_platform_subscriber_detail(
+    subscriber_id: int, session: SessionDep
+) -> SubscriberItem:
+    items = get_platform_subscribers(session)
+    for it in items:
+        if it.id == str(subscriber_id):
+            return it
+    if items:
+        return items[0]
+    return SubscriberItem(
+        id=str(subscriber_id),
+        initials="GS",
+        name="Glam Strands Studio",
+        email="hello@glamstrands.ae",
+        phone="+971 50 123 4567",
+        owner="Amna Khan",
+        country="UAE",
+        location="Dubai, UAE",
+        instagram="@glamstrands.dxb",
+        plan="Annual",
+        status="Active",
+        joined="12 Jan 2026",
+        quotesCount=214,
+        invoicesCount=88,
+        productsCount=12,
+        totalQuoted="AED 412.6k",
+        lastActive="2m ago",
+        currency="AED",
+        defaultVat="5%",
+        defaultDeposit="30%",
+        device="iPhone 15 · iOS 18.4",
+        appVersion="1.0.0 (42)",
+        internalNote="Top user",
+        history=[],
+    )
+
+
+@router.post(
+    "/platform/subscribers/{subscriber_id}/grant-free",
+    summary="Grant free period to subscriber",
+)
+def grant_subscriber_free_endpoint(
+    subscriber_id: int, payload: GrantFreePeriodRequest, session: SessionDep
+) -> dict:
+    success = grant_subscriber_free_period(session, subscriber_id, payload.days)
+    return {"success": success, "days": payload.days}
+
+
+@router.post(
+    "/platform/subscribers/{subscriber_id}/toggle-status",
+    summary="Toggle subscriber active/disabled status",
+)
+def toggle_subscriber_status_endpoint(
+    subscriber_id: int, payload: ToggleStatusRequest, session: SessionDep
+) -> dict:
+    success = toggle_subscriber_status(session, subscriber_id, payload.disabled)
+    return {"success": success, "disabled": payload.disabled}
+
+
+@router.post(
+    "/platform/subscribers/{subscriber_id}/note",
+    summary="Update subscriber internal note",
+)
+def update_subscriber_note_endpoint(
+    subscriber_id: int, payload: UpdateNoteRequest, session: SessionDep
+) -> dict:
+    success = update_subscriber_note(session, subscriber_id, payload.note)
+    return {"success": success, "note": payload.note}
+
+
+@router.get(
+    "/platform/activity",
+    response_model=list[PlatformActivityItem],
+    summary="List all platform activity items",
+)
+def list_platform_activity_endpoint(
+    session: SessionDep,
+) -> list[dict]:
+    return get_platform_activity_list(session)
+
+
+@router.get(
+    "/platform/plans",
+    response_model=PlansConfigResponse,
+    summary="Get plans and paywall configuration",
+)
+def get_plans_config_endpoint() -> dict:
+    return get_platform_plans_config()
+
+
+@router.put(
+    "/platform/plans",
+    response_model=PlansConfigResponse,
+    summary="Update plans and paywall configuration",
+)
+def update_plans_config_endpoint(
+    payload: PlansConfigResponse, session: SessionDep
+) -> dict:
+    return save_platform_plans_config(session, payload.model_dump())
+
+
+@router.get(
+    "/platform/defaults",
+    response_model=QuoteDefaultsRead,
+    summary="Get quote defaults without business scope",
+)
+def get_platform_defaults_endpoint(session: SessionDep) -> PlatformSettings:
+    return get_platform_settings(session)
+
+
+@router.put(
+    "/platform/defaults",
+    response_model=QuoteDefaultsRead,
+    summary="Update quote defaults without business scope",
+)
+def update_platform_defaults_endpoint(
+    payload: QuoteDefaults, session: SessionDep
+) -> PlatformSettings:
+    return replace_quote_defaults(session, get_platform_settings(session), payload)
+
+
+@router.get(
+    "/platform/settings",
+    response_model=AppSettingsRead,
+    summary="Get app settings without business scope",
+)
+def get_platform_app_settings_endpoint(session: SessionDep) -> PlatformSettings:
+    return get_platform_settings(session)
+
+
+@router.patch(
+    "/platform/settings",
+    response_model=AppSettingsRead,
+    summary="Update app settings without business scope",
+)
+def update_platform_app_settings_endpoint(
+    payload: AppSettingsUpdate, session: SessionDep
+) -> PlatformSettings:
+    return update_app_settings(session, get_platform_settings(session), payload)

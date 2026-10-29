@@ -106,5 +106,127 @@ export const apiClient = {
     } catch {
       return false;
     }
-  }
+  },
+
+  // --- Platform Admin Endpoints ---
+
+  async getPlatformOverview() {
+    const res = await this.request('/admin/platform/overview');
+    if (res && res.ok) {
+      return await res.json();
+    }
+    return null;
+  },
+
+  async getPlatformSubscribers(params = {}) {
+    const query = new URLSearchParams();
+    if (params.status && params.status !== 'All') query.append('status', params.status);
+    if (params.plan && params.plan !== 'All') query.append('plan', params.plan);
+    if (params.country && params.country !== 'All') query.append('country', params.country);
+    if (params.search) query.append('search', params.search);
+
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    const res = await this.request(`/admin/platform/subscribers${qs}`);
+    if (res && res.ok) {
+      return await res.json();
+    }
+    return null;
+  },
+
+  async getPlatformSubscriber(subscriberId) {
+    const res = await this.request(`/admin/platform/subscribers/${subscriberId}`);
+    if (res && res.ok) {
+      return await res.json();
+    }
+    return null;
+  },
+
+  async grantFreePeriod(subscriberId, days = 30) {
+    const res = await this.request(`/admin/platform/subscribers/${subscriberId}/grant-free`, {
+      method: 'POST',
+      body: JSON.stringify({ days }),
+    });
+    return res && res.ok;
+  },
+
+  async toggleSubscriberStatus(subscriberId, disabled) {
+    const res = await this.request(`/admin/platform/subscribers/${subscriberId}/toggle-status`, {
+      method: 'POST',
+      body: JSON.stringify({ disabled }),
+    });
+    return res && res.ok;
+  },
+
+  async updateSubscriberNote(subscriberId, note) {
+    const res = await this.request(`/admin/platform/subscribers/${subscriberId}/note`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+    return res && res.ok;
+  },
+
+  async getPlatformActivity() {
+    const res = await this.request('/admin/platform/activity');
+    if (res && res.ok) {
+      return await res.json();
+    }
+    return null;
+  },
+
+  async getPlansConfig() {
+    const res = await this.request('/admin/platform/plans');
+    if (res && res.ok) {
+      return await res.json();
+    }
+    return null;
+  },
+
+  async updatePlansConfig(payload) {
+    const res = await this.request('/admin/platform/plans', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    if (res && res.ok) {
+      return await res.json();
+    }
+    return null;
+  },
+
+  async getQuoteDefaults() {
+    const res = await this.request('/admin/platform/defaults');
+    if (res && res.ok) {
+      return await res.json();
+    }
+    return null;
+  },
+
+  async updateQuoteDefaults(payload) {
+    const res = await this.request('/admin/platform/defaults', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    if (res && res.ok) {
+      return await res.json();
+    }
+    return null;
+  },
+
+  async getAppSettings() {
+    const res = await this.request('/admin/platform/settings');
+    if (res && res.ok) {
+      return await res.json();
+    }
+    return null;
+  },
+
+  async updateAppSettings(payload) {
+    const res = await this.request('/admin/platform/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+    if (res && res.ok) {
+      return await res.json();
+    }
+    return null;
+  },
 };
