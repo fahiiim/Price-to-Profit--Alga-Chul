@@ -33,11 +33,15 @@ export default function SubscriberDetailPage({
       ...(subscriber.history || []),
     ];
 
-    onUpdateSubscriber({
-      ...subscriber,
-      status: 'Active',
-      history: updatedHistory,
-    });
+    onUpdateSubscriber(
+      {
+        ...subscriber,
+        status: 'Active',
+        history: updatedHistory,
+      },
+      'grant-free',
+      { days: freeDays }
+    );
     setShowGrantModal(false);
   };
 
@@ -55,19 +59,27 @@ export default function SubscriberDetailPage({
       ...(subscriber.history || []),
     ];
 
-    onUpdateSubscriber({
-      ...subscriber,
-      status: newStatus,
-      history: newHistory,
-    });
+    onUpdateSubscriber(
+      {
+        ...subscriber,
+        status: newStatus,
+        history: newHistory,
+      },
+      'toggle-status',
+      { disabled: isNowDisabled }
+    );
     setShowDisableModal(false);
   };
 
   const handleSaveNote = () => {
-    onUpdateSubscriber({
-      ...subscriber,
-      internalNote,
-    });
+    onUpdateSubscriber(
+      {
+        ...subscriber,
+        internalNote,
+      },
+      'save-note',
+      { note: internalNote }
+    );
     setNoteSaved(true);
     setTimeout(() => setNoteSaved(false), 2000);
   };
