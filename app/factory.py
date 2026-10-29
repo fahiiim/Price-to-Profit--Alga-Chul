@@ -88,6 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 return FileResponse(requested_file)
             return FileResponse(frontend_dist / "index.html")
     else:
+
         @app.get("/", include_in_schema=False)
         def root_redirect():
             from fastapi.responses import RedirectResponse
