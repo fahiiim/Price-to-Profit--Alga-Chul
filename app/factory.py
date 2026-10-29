@@ -64,10 +64,34 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_router)
     app.include_router(api_router)
 
-    @app.get("/", include_in_schema=False)
-    def root_redirect():
-        from fastapi.responses import RedirectResponse
+    from app.core.config import PROJECT_ROOT
 
-        return RedirectResponse(url="/docs")
+    frontend_dist = PROJECT_ROOT / "frontend" / "dist"
+    if frontend_dist.is_dir() and (frontend_dist / "index.html").is_file():
+        from fastapi.responses import FileResponse
+        from fastapi.staticfiles import StaticFiles
+
+        assets_dir = frontend_dist / "assets"
+        if assets_dir.is_dir():
+            app.mount(
+                "/assets",
+                StaticFiles(directory=str(assets_dir)),
+                name="frontend-assets",
+            )
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_spa(full_path: str):
+            if full_path.startswith(("v1", "docs", "redoc", "openapi.json", "health")):
+                return None
+            requested_file = frontend_dist / full_path
+            if full_path and requested_file.is_file():
+                return FileResponse(requested_file)
+            return FileResponse(frontend_dist / "index.html")
+    else:
+        @app.get("/", include_in_schema=False)
+        def root_redirect():
+            from fastapi.responses import RedirectResponse
+
+            return RedirectResponse(url="/docs")
 
     return app

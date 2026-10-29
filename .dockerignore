@@ -16,3 +16,5 @@ docs
 !.env.example
 media/*
 !media/.gitkeep
+frontend/node_modules
+
