@@ -42,27 +42,11 @@ export default function SignInPage({ onSignInSuccess }) {
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: '50%',
-                backgroundColor: '#FFFFFF',
-                color: 'var(--primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: 'var(--font-serif)',
-                fontWeight: 700,
-                fontSize: 22,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              }}
-            >
-              P
-            </div>
-            <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.2 }}>
-              Price to Profit
-            </span>
+            <img
+              src="/gramulate-logo-dark.png"
+              alt="Gramulate"
+              style={{ height: 38, objectFit: 'contain' }}
+            />
           </div>
 
           <div style={{ marginTop: '12vh', maxWidth: 460 }}>
@@ -161,10 +145,15 @@ export default function SignInPage({ onSignInSuccess }) {
           }}
         >
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
+            <img
+              src="/gramulate-logo.png"
+              alt="Gramulate"
+              style={{ height: 42, objectFit: 'contain', margin: '0 auto 16px auto', display: 'block' }}
+            />
             <h2
               className="font-serif"
               style={{
-                fontSize: 28,
+                fontSize: 26,
                 color: 'var(--text-heading)',
                 fontWeight: 500,
                 letterSpacing: -0.3,
@@ -173,7 +162,7 @@ export default function SignInPage({ onSignInSuccess }) {
               Welcome back
             </h2>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
-              Sign in to the Price to Profit admin console.
+              Sign in to the Gramulate admin console.
             </p>
           </div>
 

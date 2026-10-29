@@ -22,11 +22,19 @@ export default function Sidebar({ activeTab, onSelectTab, onSignOut, currentUser
   return (
     <aside className="sidebar">
       <div>
-        <div className="sidebar-brand">
-          <div className="brand-icon">P</div>
-          <div className="brand-info">
-            <span className="brand-title">Price to Profit</span>
-            <span className="brand-badge">Admin Console</span>
+        <div className="sidebar-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, padding: '4px 8px 20px 8px' }}>
+          <img
+            src="/gramulate-logo-dark.png"
+            alt="Gramulate"
+            style={{ height: 28, maxWidth: 180, objectFit: 'contain' }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+            <span style={{ fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 600 }}>
+              Admin Console
+            </span>
+            <span style={{ fontSize: 9.5, color: '#38A169', background: 'rgba(56, 161, 105, 0.15)', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+              LIVE
+            </span>
           </div>
         </div>
 

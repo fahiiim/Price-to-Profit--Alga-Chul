@@ -73,24 +73,24 @@ export default function AppSettingsPage({
               <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
                 <div
                   style={{
-                    width: 72,
-                    height: 72,
+                    width: 76,
+                    height: 76,
                     borderRadius: 18,
-                    background: customLogoPreview
-                      ? `url(${customLogoPreview}) center/cover no-repeat`
-                      : 'var(--primary-gradient)',
-                    color: '#FFFFFF',
+                    background: '#FFFFFF',
+                    border: '1px solid var(--card-border)',
+                    padding: 8,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontFamily: 'var(--font-serif)',
-                    fontWeight: 700,
-                    fontSize: 34,
-                    boxShadow: '0 4px 14px rgba(194, 24, 91, 0.35)',
+                    boxShadow: '0 4px 14px rgba(18, 21, 29, 0.08)',
                     flexShrink: 0,
                   }}
                 >
-                  {!customLogoPreview && 'P'}
+                  <img
+                    src={customLogoPreview || '/gramulate-logo.png'}
+                    alt="Gramulate Icon"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
                 </div>
 
                 <div>

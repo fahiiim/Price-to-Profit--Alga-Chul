@@ -10,7 +10,6 @@ dist/
 venv/
 
 # Local configuration
-.env
 
 # Local data
 *.db
@@ -22,3 +21,9 @@ media/
 .ruff_cache/
 .coverage
 htmlcov/
+config.bat
+node_modules
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
